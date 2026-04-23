@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  background: theme("colors.paper");
+  color: theme("colors.ink");
+  font-family: theme("fontFamily.mono");
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Blueprint grid background (subtle) */
+.bp-grid {
+  background-image:
+    linear-gradient(theme("colors.grid") 1px, transparent 1px),
+    linear-gradient(90deg, theme("colors.grid") 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+}
+
+/* Tiny dotted grid variant */
+.bp-grid-dots {
+  background-image: radial-gradient(theme("colors.grid") 1px, transparent 1.5px);
+  background-size: 16px 16px;
+}
+
+/* Hairline rules */
+.rule-h {
+  height: 1px;
+  background: theme("colors.ink");
+  width: 100%;
+}
+.rule-h-double {
+  border-top: 1px solid theme("colors.ink");
+  border-bottom: 1px solid theme("colors.ink");
+  padding-block: 3px;
+  height: auto;
+}
+
+/* Caret/brackets used in labels */
+.tech-bracket-open::before { content: "[ "; }
+.tech-bracket-close::after { content: " ]"; }
+
+/* Data plate (mono value block) */
+.plate {
+  font-family: theme("fontFamily.mono");
+  background: theme("colors.paper-raised");
+  border: 1px solid theme("colors.ink");
+  padding: 6px 10px;
+  letter-spacing: 0.02em;
+}
+
+/* Caption style used for arrow callouts */
+.caption {
+  font-family: theme("fontFamily.mono");
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: theme("colors.muted");
+}
+
+/* Tick mark on a bar */
+.tick-up::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  width: 1px;
+  height: 6px;
+  background: theme("colors.ink");
+}
+
+/* Accent underline for hover */
+.accent-underline {
+  background-image: linear-gradient(theme("colors.accent"), theme("colors.accent"));
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 0 2px;
+  transition: background-size 160ms ease;
+}
+.accent-underline:hover,
+a:hover .accent-underline {
+  background-size: 100% 2px;
+}
+
+/* Simulated stamp for "APPROVED"/"REJECTED" chips */
+.stamp {
+  border: 1.5px solid currentColor;
+  padding: 2px 8px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-family: theme("fontFamily.mono");
+  font-size: 10px;
+}
+
+/* Scrollbar tweak — keep blueprint vibe */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: theme("colors.ink") transparent;
+}
+
+/* Remove default focus ring glow; use underline instead */
+:focus-visible {
+  outline: 2px solid theme("colors.accent");
+  outline-offset: 2px;
+}
+
+/* Utility for labelled corner brackets */
+.corner-box {
+  position: relative;
+}
+.corner-box::before,
+.corner-box::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 1px solid theme("colors.ink");
+}
+.corner-box::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.corner-box::after  { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }

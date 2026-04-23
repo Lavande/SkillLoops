@@ -1,0 +1,77 @@
+import { NextRequest } from "next/server";
+import { z } from "zod";
+import { getDb } from "@/lib/db";
+import { effectiveActor, guarded, bad } from "@/lib/api-helpers";
+import { publishSkill, getPeriodLengthSeconds } from "@/lib/services";
+import { PublishSkillSchema } from "@/lib/schemas";
+import { solToLamports } from "@/lib/units";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(req: NextRequest) {
+  return guarded(async () => {
+    const url = req.nextUrl;
+    const category = url.searchParams.get("category");
+    const q = url.searchParams.get("q")?.toLowerCase() ?? "";
+    const sort = url.searchParams.get("sort") ?? "subscribers";
+    const db = getDb();
+    let rows = db
+      .prepare(
+        `SELECT s.*, l.total_shares, l.author_shares, l.contributor_count
+         FROM skills s JOIN share_ledgers l ON l.skill_id = s.skill_id`
+      )
+      .all() as any[];
+    if (category) rows = rows.filter((r) => r.category === category);
+    if (q) rows = rows.filter((r) => r.name.toLowerCase().includes(q) || r.description.toLowerCase().includes(q));
+    rows.sort((a, b) => {
+      switch (sort) {
+        case "holders":
+          return b.contributor_count - a.contributor_count;
+        case "recent":
+          return b.created_at - a.created_at;
+        case "price":
+          return a.subscription_price - b.subscription_price;
+        default:
+          return b.subscriber_count - a.subscriber_count;
+      }
+    });
+    return rows.map(shape);
+  });
+}
+
+export async function POST(req: NextRequest) {
+  return guarded(async () => {
+    const body = PublishSkillSchema.parse(await req.json());
+    const author = effectiveActor(req);
+    const result = publishSkill({
+      author,
+      name: body.name,
+      description: body.description,
+      category: body.category,
+      content: body.content,
+      subscriptionPriceLamports: solToLamports(body.subscription_price_sol),
+      minAuthorRatioBps: body.min_author_ratio_bps,
+      periodLengthSeconds: getPeriodLengthSeconds(),
+    });
+    return result;
+  });
+}
+
+function shape(r: any) {
+  return {
+    skillId: r.skill_id,
+    author: r.author,
+    name: r.name,
+    description: r.description,
+    category: r.category,
+    currentVersion: r.current_version,
+    subscriptionPrice: r.subscription_price,
+    minAuthorRatioBps: r.min_author_ratio_bps,
+    createdAt: r.created_at,
+    subscriberCount: r.subscriber_count,
+    totalRevenue: r.total_revenue,
+    totalShares: r.total_shares,
+    authorShares: r.author_shares,
+    contributorCount: r.contributor_count,
+  };
+}

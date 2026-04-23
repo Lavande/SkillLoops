@@ -1,0 +1,31 @@
+# deps
+node_modules
+.pnpm-store
+
+# next
+.next
+out
+next-env.d.ts
+
+# data (mock db is the reset button)
+data/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# test artifacts
+test-results
+playwright-report
+.vitest-cache
+coverage
+
+# editor/OS
+.DS_Store
+.vscode
+.idea
+*.log
+
+.agents/
+.claude/
