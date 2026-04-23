@@ -6,8 +6,7 @@ pub mod constants;
 pub mod error;
 pub mod events;
 pub mod math;
-// Re-enabled in Task 7+ once state module exists:
-// pub mod state;
+pub mod state;
 // Re-enabled in Task 9+ once instructions module exists:
 // pub mod instructions;
 // use instructions::*;
