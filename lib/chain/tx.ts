@@ -160,3 +160,109 @@ export async function publishSkill(
   const res = await sendAndIndex(connection, signer, [ix]);
   return { ...res, skillId: skill.toBase58() };
 }
+
+export async function buildSubscribeIx(args: {
+  programId: PublicKey; subscriber: PublicKey; skill: PublicKey;
+}): Promise<TransactionInstruction> {
+  const [pool] = pdas.revenuePool(args.programId, args.skill);
+  const [subscription] = pdas.subscription(args.programId, args.skill, args.subscriber);
+  const [shareAccount] = pdas.shareAccount(args.programId, args.skill, args.subscriber);
+  const program = getProgram({ rpcEndpoint: "" } as unknown as Connection, {
+    publicKey: args.subscriber, signTransaction: async (t: any) => t,
+  }, args.programId);
+  return await program.methods
+    .subscribe()
+    .accountsPartial({
+      subscriber: args.subscriber,
+      skill: args.skill,
+      pool, subscription, shareAccount,
+      systemProgram: SystemProgram.programId,
+    })
+    .instruction();
+}
+
+export async function subscribe(
+  connection: Connection, signer: Signer, programId: PublicKey, skill: PublicKey,
+): Promise<TxResult> {
+  const ix = await buildSubscribeIx({ programId, subscriber: signer.publicKey, skill });
+  return sendAndIndex(connection, signer, [ix]);
+}
+
+export async function buildSubmitExperienceIx(args: {
+  programId: PublicKey; contributor: PublicKey; skill: PublicKey;
+  nextExperienceId: bigint; contentHash: Uint8Array; arweaveTxId: string; skillVersion: number;
+}): Promise<TransactionInstruction> {
+  const [experience] = pdas.experience(args.programId, args.skill, args.nextExperienceId);
+  const [contributorShare] = pdas.shareAccount(args.programId, args.skill, args.contributor);
+  const program = getProgram({ rpcEndpoint: "" } as unknown as Connection, {
+    publicKey: args.contributor, signTransaction: async (t: any) => t,
+  }, args.programId);
+  return await program.methods
+    .submitExperience({
+      contentHash: Array.from(args.contentHash),
+      arweaveTxId: args.arweaveTxId,
+      skillVersion: args.skillVersion,
+    })
+    .accountsPartial({
+      contributor: args.contributor,
+      skill: args.skill,
+      experience,
+      contributorShare,
+      systemProgram: SystemProgram.programId,
+    })
+    .instruction();
+}
+
+export async function submitExperience(
+  connection: Connection, signer: Signer, args: {
+    programId: PublicKey; skill: PublicKey; nextExperienceId: bigint;
+    contentHash: Uint8Array; arweaveTxId: string; skillVersion: number;
+  }
+): Promise<TxResult & { experienceId: string }> {
+  const ix = await buildSubmitExperienceIx({
+    programId: args.programId, contributor: signer.publicKey,
+    skill: args.skill, nextExperienceId: args.nextExperienceId,
+    contentHash: args.contentHash, arweaveTxId: args.arweaveTxId,
+    skillVersion: args.skillVersion,
+  });
+  const [exp] = pdas.experience(args.programId, args.skill, args.nextExperienceId);
+  const res = await sendAndIndex(connection, signer, [ix]);
+  return { ...res, experienceId: exp.toBase58() };
+}
+
+export async function buildEvaluateExperienceIx(args: {
+  programId: PublicKey; judge: PublicKey;
+  skill: PublicKey; experienceId: bigint; contributor: PublicKey;
+  score: number; judgeReportTxId: string;
+}): Promise<TransactionInstruction> {
+  const [config] = pdas.config(args.programId);
+  const [experience] = pdas.experience(args.programId, args.skill, args.experienceId);
+  const [ledger] = pdas.shareLedger(args.programId, args.skill);
+  const [contributorShare] = pdas.shareAccount(args.programId, args.skill, args.contributor);
+  const program = getProgram({ rpcEndpoint: "" } as unknown as Connection, {
+    publicKey: args.judge, signTransaction: async (t: any) => t,
+  }, args.programId);
+  return await program.methods
+    .evaluateExperience(args.score, args.judgeReportTxId)
+    .accountsPartial({
+      judge: args.judge, config,
+      skill: args.skill, experience,
+      ledger, contributorShare,
+    })
+    .instruction();
+}
+
+export async function evaluateExperience(
+  connection: Connection, signer: Signer, args: {
+    programId: PublicKey; skill: PublicKey; experienceId: bigint;
+    contributor: PublicKey; score: number; judgeReportTxId: string;
+  }
+): Promise<TxResult> {
+  const ix = await buildEvaluateExperienceIx({
+    programId: args.programId, judge: signer.publicKey,
+    skill: args.skill, experienceId: args.experienceId,
+    contributor: args.contributor, score: args.score,
+    judgeReportTxId: args.judgeReportTxId,
+  });
+  return sendAndIndex(connection, signer, [ix]);
+}
