@@ -19,12 +19,11 @@ init-if-needed = ["anchor-lang/init-if-needed"]
 idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
-anchor-lang = { version = "0.30.1", features = ["init-if-needed"] }
+anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
 
 [dev-dependencies]
-# litesvm and solana-sdk re-enabled in Task 10+ (integration tests):
-# litesvm = "0.5"
-# solana-sdk = "2"
-anchor-lang = { version = "0.30.1", features = ["idl-build"] }
+litesvm = "0.7"
+solana-sdk = "2"
+anchor-lang = { version = "0.31.1", features = ["idl-build"] }
 borsh = "1"
 sha2 = "0.10"
