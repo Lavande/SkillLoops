@@ -8,7 +8,11 @@ export interface Signer {
   signAllTransactions?<T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]>;
 }
 
-export function getProgram(connection: Connection, signer: Signer): Program<Slp> {
+export function getProgram(
+  connection: Connection,
+  signer: Signer,
+  programId?: PublicKey,
+): Program<Slp> {
   const wallet: Wallet = {
     publicKey: signer.publicKey,
     signTransaction: signer.signTransaction.bind(signer) as Wallet["signTransaction"],
@@ -18,5 +22,11 @@ export function getProgram(connection: Connection, signer: Signer): Program<Slp>
     payer: undefined as any, // unused when signing via Phantom / external signer
   };
   const provider = new AnchorProvider(connection, wallet, { commitment: "confirmed" });
-  return new Program<Slp>(IDL as any, provider);
+  // Anchor 0.31 derives the program id from `idl.address`. Callers that want
+  // to target a different deployment (e.g. unit tests) can override it by
+  // passing a PublicKey; we clone + patch the IDL so the constructor picks it up.
+  const idl = programId
+    ? { ...(IDL as any), address: programId.toBase58() }
+    : (IDL as any);
+  return new Program<Slp>(idl, provider);
 }
