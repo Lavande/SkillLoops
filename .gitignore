@@ -29,3 +29,8 @@ coverage
 
 .agents/
 .claude/
+
+# solana / anchor
+programs/target/
+programs/.anchor/
+programs/**/*-keypair.json
