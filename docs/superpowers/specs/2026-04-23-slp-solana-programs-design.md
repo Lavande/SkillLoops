@@ -81,9 +81,9 @@ SkillLoops/
 
 ### Toolchain
 
-- Rust 1.79.0 (pinned via `rust-toolchain.toml`).
+- Rust 1.85.0 (pinned via `rust-toolchain.toml`). Updated from the originally-specced 1.79 during Slice 2 execution (2026-04-24): the current crate graph pulls `hybrid-array 0.4.10` transitively via `blake3` → `digest 0.11`, which requires `edition2024` (stabilized in Rust 1.85).
 - Anchor 0.30.1 (via `avm`).
-- `solana-cli` (only needed for `anchor build` to produce `slp.so`; no validator used in tests).
+- Agave 2.2.20 (Solana 2.x). Updated from the originally-specced Solana 1.18 because LiteSVM 0.5 requires `solana-* 2.x` and because 1.18's platform-tools bundles Rust 1.75, which cannot compile the `edition2024` transitives.
 - `litesvm` 0.5.x for integration tests.
 
 ### Key principles

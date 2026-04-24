@@ -6,13 +6,26 @@
 
 **Architecture:** Single Cargo workspace under `programs/` at the repo root. One Anchor 0.30.1 program with eight instructions and nine account types. Pure-Rust math module in `math.rs` mirrors `lib/domain/shares.ts` + `lib/domain/revenue.ts` with inline `#[test]`s. Integration tests use `litesvm` to load the built `.so`, bootstrap personas, and walk the PRD demo flow plus adversarial cases.
 
-**Tech Stack:** Rust 1.79.0, Anchor 0.30.1, Solana 1.18.x, `litesvm` 0.5.x, `borsh`, `sha2`.
+**Tech Stack:** Rust 1.85.0, Anchor 0.30.1, Solana/Agave 2.2.20, `litesvm` 0.5.x, `borsh`, `sha2`.
 
 **Reference docs:**
 - Spec: `docs/superpowers/specs/2026-04-23-slp-solana-programs-design.md`
 - TS reference math: `lib/domain/shares.ts`, `lib/domain/revenue.ts`
 - TS reference constants: `lib/domain/thresholds.ts`
 - PRD: `PRD.md` (sections 4.1, 5.6, 5.7, Appendix B)
+
+## Toolchain deviations locked in during execution (2026-04-24)
+
+The versions originally pinned in this plan (Rust 1.79, Solana 1.18, LiteSVM 0.5) turned out to be mutually incompatible once the crate graph was materialized. Locked-in changes:
+
+- **Rust: 1.79 → 1.85.** `hybrid-array 0.4.10` (pulled transitively via `blake3` → `digest 0.11`) requires `edition2024`, which wasn't stabilized until Rust 1.85.
+- **Solana: 1.18 → 2.2.20.** LiteSVM 0.5 requires `solana-* 2.x`; the 1.18-era platform-tools bundles Rust 1.75 which can't compile the `edition2024` transitives. Agave 2.2.20 platform-tools ship a Rust toolchain that handles the current crate graph.
+- **SBF build step:** deferred from Task 1 Step 13 to just before Task 17. Native build (`cargo build -p slp --release`) is the verification gate for Tasks 1–16; `cargo build-sbf` + LiteSVM integration kick in at Task 17.
+- **Cargo.toml additions:** `init-if-needed = ["anchor-lang/init-if-needed"]` feature and `anchor-lang` with `init-if-needed` feature enabled for `subscribe` and `submit_experience`.
+- **Transitive pins in Cargo.lock:** `serde_with` pinned to 3.12.0 and `url` to 2.4.1 to avoid crates that require rustc ≥ 1.86.
+- **Build-test env:** `ANCHOR_IDL_BUILD_SKIP_LINT=TRUE` required for `cargo test` because the `idl-build` feature triggers filesystem reads via `ANCHOR_IDL_BUILD_PROGRAM_PATH` that aren't present in unit-test runs.
+
+These changes are reflected in each task commit's body where relevant. The original Task 1 Step 1 / Step 2 instructions remain valid but substitute Rust 1.85 and Agave 2.2.20. All other tasks stand unchanged.
 
 ---
 
