@@ -38,13 +38,14 @@ export const irysStorage = {
       importImpl("@irys/upload-solana"),
     ]);
 
-    let uploader = await Uploader(Solana).withWallet(privateKey);
-    if (env.IRYS_NETWORK === "devnet" && typeof uploader.devnet === "function") {
-      uploader = uploader.devnet();
+    let uploaderBuilder = Uploader(Solana).withWallet(privateKey);
+    if (env.NEXT_PUBLIC_SOLANA_RPC && typeof uploaderBuilder.withRpc === "function") {
+      uploaderBuilder = uploaderBuilder.withRpc(env.NEXT_PUBLIC_SOLANA_RPC);
     }
-    if (env.NEXT_PUBLIC_SOLANA_RPC && typeof uploader.withRpc === "function") {
-      uploader = uploader.withRpc(env.NEXT_PUBLIC_SOLANA_RPC);
+    if (env.IRYS_NETWORK === "devnet" && typeof uploaderBuilder.devnet === "function") {
+      uploaderBuilder = uploaderBuilder.devnet();
     }
+    const uploader = await uploaderBuilder;
 
     const receipt = await uploader.upload(content, {
       tags: [

@@ -38,6 +38,51 @@ describe("storage backends", () => {
     expect(obj).toBeNull();
     expect(fetchImpl).toHaveBeenCalledWith("https://gateway.example/missing-id");
   });
+
+  it("Irys upload configures Solana devnet uploader before upload", async () => {
+    const calls: string[] = [];
+    const uploader = {
+      upload: vi.fn(async () => ({ id: "irys-real-id" })),
+    };
+    const builder = {
+      withWallet: vi.fn((privateKey: string) => {
+        calls.push(`wallet:${privateKey}`);
+        return builder;
+      }),
+      withRpc: vi.fn((rpcUrl: string) => {
+        calls.push(`rpc:${rpcUrl}`);
+        return builder;
+      }),
+      devnet: vi.fn(async () => {
+        calls.push("devnet");
+        return uploader;
+      }),
+    };
+    const importImpl = vi.fn(async (specifier: string) => {
+      if (specifier === "@irys/upload") return { Uploader: vi.fn(() => builder) };
+      if (specifier === "@irys/upload-solana") return { Solana: "solana-adapter" };
+      throw new Error(`unexpected import ${specifier}`);
+    });
+
+    const up = await irysStorage.upload("body", [{ name: "Type", value: "Test" }], "owner-1", {
+      env: {
+        IRYS_PRIVATE_KEY: "private-key",
+        IRYS_NETWORK: "devnet",
+        NEXT_PUBLIC_SOLANA_RPC: "https://api.devnet.solana.com",
+      },
+      importImpl,
+    });
+
+    expect(up.txId).toBe("irys-real-id");
+    expect(calls).toEqual(["wallet:private-key", "rpc:https://api.devnet.solana.com", "devnet"]);
+    expect(uploader.upload).toHaveBeenCalledWith("body", {
+      tags: [
+        { name: "Type", value: "Test" },
+        { name: "Owner", value: "owner-1" },
+        { name: "Content-Type", value: "application/json" },
+      ],
+    });
+  });
 });
 
 describe("Irys API routes", () => {
