@@ -40,21 +40,20 @@ export const api = {
     request<{ plaintext: string }>(`/api/lit/decrypt`, { method: "POST", body: JSON.stringify(body) }, { wallet, signature }),
   fetchIrys: (txId: string) => request<{ content: string; tags: any[]; owner: string; uploadedAt: number }>(`/api/irys/${txId}`),
 
-  publish: (wallet: string, signature: string, body: any) =>
-    request<{ skillId: string; arweaveTxId: string }>(`/api/skills`, { method: "POST", body: JSON.stringify(body) }, { wallet, signature }),
-  subscribe: (wallet: string, signature: string, body: { skill_id: string }) =>
-    request<any>(`/api/subscriptions`, { method: "POST", body: JSON.stringify(body) }, { wallet, signature }),
-  submitExperience: (wallet: string, signature: string, body: any) =>
-    request<{ experienceId: number }>(`/api/experiences`, { method: "POST", body: JSON.stringify(body) }, { wallet, signature }),
-  settle: (wallet: string, signature: string, skillId: string) =>
-    request<any>(`/api/revenue/${skillId}/settle`, { method: "POST", body: "{}" }, { wallet, signature }),
-  claim: (wallet: string, signature: string, skillId: string) =>
-    request<any>(`/api/revenue/${skillId}/claim`, { method: "POST", body: "{}" }, { wallet, signature }),
-
   consoleStep: (step: string, impersonate?: string) =>
     request<any>(`/api/console/step`, {
       method: "POST",
       body: JSON.stringify({ step }),
       headers: impersonate ? { "x-slp-impersonate": impersonate } : undefined,
     }),
+
+  indexerTick: (sig?: string) =>
+    request<{ processed: number }>(`/api/indexer/tick`, {
+      method: "POST",
+      body: JSON.stringify(sig ? { sig } : {}),
+    }),
+  indexerStatus: (verify = false) =>
+    request<{ running: boolean; lastSeenSig: string | null; lastSeenSlot: number | null; parseFailures: number; ok?: boolean; mismatches?: any[] }>(
+      `/api/indexer/status${verify ? "?verify=1" : ""}`,
+    ),
 };

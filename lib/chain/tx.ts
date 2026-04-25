@@ -3,7 +3,7 @@ import {
   SYSVAR_RENT_PUBKEY,
 } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
-import { createHash } from "node:crypto";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { getProgram, type Signer } from "./program";
 import { pdas } from "./pdas";
 import { parseChainError } from "./errors";
@@ -143,7 +143,7 @@ export async function publishSkill(
     minAuthorRatioBps: number; k: number; periodLengthSeconds: bigint;
   },
 ): Promise<TxResult & { skillId: string }> {
-  const contentHash = createHash("sha256").update(args.content).digest();
+  const contentHash = Buffer.from(sha256(new TextEncoder().encode(args.content)));
   const ix = await buildPublishSkillIx({
     programId: args.programId,
     author: signer.publicKey,
@@ -371,7 +371,7 @@ export async function publishNewVersion(
     content: string; arweaveTxId: string; contributingExperienceIds: bigint[];
   }
 ): Promise<TxResult> {
-  const contentHash = createHash("sha256").update(args.content).digest();
+  const contentHash = Buffer.from(sha256(new TextEncoder().encode(args.content)));
   const ix = await buildPublishNewVersionIx({
     programId: args.programId, author: signer.publicKey,
     skill: args.skill, currentVersion: args.currentVersion,
@@ -380,4 +380,14 @@ export async function publishNewVersion(
     contributingExperienceIds: args.contributingExperienceIds,
   });
   return sendAndIndex(connection, signer, [ix]);
+}
+
+export async function getNextExperienceId(
+  connection: Connection, programId: PublicKey, skill: PublicKey,
+): Promise<bigint> {
+  const program = getProgram(connection, {
+    publicKey: skill, signTransaction: async (t: any) => t,
+  }, programId);
+  const acct = await (program.account as any).skill.fetch(skill);
+  return BigInt(acct.nextExperienceId.toString());
 }

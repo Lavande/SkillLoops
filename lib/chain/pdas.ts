@@ -1,11 +1,11 @@
 import { PublicKey } from "@solana/web3.js";
-import { createHash } from "node:crypto";
+import { sha256 } from "@noble/hashes/sha2.js";
 
 function u32le(n: number): Buffer { const b = Buffer.alloc(4); b.writeUInt32LE(n, 0); return b; }
 function u64le(n: bigint): Buffer { const b = Buffer.alloc(8); b.writeBigUInt64LE(n, 0); return b; }
 
 function nameHash(name: string): Buffer {
-  return createHash("sha256").update(name).digest().subarray(0, 16);
+  return Buffer.from(sha256(new TextEncoder().encode(name))).subarray(0, 16);
 }
 
 export const pdas = {
