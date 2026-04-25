@@ -1,23 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { PublicKey } from "@solana/web3.js";
 import { api } from "@/lib/api-client";
 import { fmtSol } from "@/lib/units";
-import { signMessage } from "@/lib/wallet";
 import { LabeledBox } from "@/components/brutalist/LabeledBox";
 import { Btn } from "@/components/brutalist/Btn";
 import { Chip } from "@/components/brutalist/Chip";
 import { MonoId, truncateId } from "@/components/brutalist/MonoId";
 import { DataPlate } from "@/components/brutalist/DataPlate";
 import { PhantomSignPending } from "@/components/brutalist/PhantomSignPending";
+import { TxStatus } from "@/components/brutalist/TxStatus";
+import { getConnection } from "@/lib/chain/connection";
+import { getChainConfig } from "@/lib/chain/config";
+import { claimRevenue as chainClaim } from "@/lib/chain/tx";
 
 const TABS = ["Overview", "Published", "Subscriptions", "Holdings", "Contributions", "Claimable"] as const;
 type Tab = typeof TABS[number];
 
 export default function MePage() {
+  return (
+    <Suspense fallback={<div className="pt-10 font-mono text-sm">loading…</div>}>
+      <MePageInner />
+    </Suspense>
+  );
+}
+
+function MePageInner() {
   const w = useWallet();
   const wallet = w.publicKey?.toBase58() ?? null;
   const search = useSearchParams();
@@ -28,6 +40,8 @@ export default function MePage() {
   const [data, setData] = useState<any | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [signing, setSigning] = useState<string | null>(null);
+  const [txStatus, setTxStatus] = useState<"idle" | "signing" | "confirming" | "confirmed" | "error">("idle");
+  const [txSig, setTxSig] = useState<string | undefined>();
 
   async function load() {
     if (!wallet) {
@@ -47,17 +61,23 @@ export default function MePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wallet]);
 
-  async function onClaim(skillId: string) {
+  async function onClaim(skillId: string, snapshotId: number) {
     if (!wallet) return;
-    setSigning("Approve claim");
+    setTxStatus("signing");
+    setTxSig(undefined);
     try {
-      const { signatureBase58 } = await signMessage(w, `SLP CLAIM\nskill: ${skillId}\nt: ${Date.now()}`);
-      await api.claim(wallet, signatureBase58, skillId);
+      const { programId } = getChainConfig();
+      const result = await chainClaim(getConnection(), w as any, {
+        programId,
+        skill: new PublicKey(skillId),
+        snapshotId: BigInt(snapshotId),
+      });
+      setTxSig(result.sig);
+      setTxStatus("confirmed");
       await load();
     } catch (e: any) {
       setErr(e?.message ?? "claim failed");
-    } finally {
-      setSigning(null);
+      setTxStatus("error");
     }
   }
 
@@ -95,6 +115,10 @@ export default function MePage() {
           ))}
         </nav>
       </header>
+
+      <div className="col-span-12">
+        <TxStatus status={txStatus} sig={txSig} cluster={getChainConfig().cluster} error={err ?? undefined} />
+      </div>
 
       {tab === "Overview" ? (
         <section className="col-span-12 grid grid-cols-5 gap-4">
@@ -168,7 +192,7 @@ export default function MePage() {
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="font-mono text-sm">{fmtSol(c.amount, 6)}</span>
-                    <Btn variant="primary" onClick={() => onClaim(c.skillId)}>Claim</Btn>
+                    <Btn variant="primary" onClick={() => onClaim(c.skillId, c.snapshotId)}>Claim</Btn>
                   </div>
                 </li>
               ))}

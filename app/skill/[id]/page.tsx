@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { PublicKey } from "@solana/web3.js";
 import { api } from "@/lib/api-client";
 import { fmtSol } from "@/lib/units";
 import { signMessage } from "@/lib/wallet";
@@ -16,6 +17,12 @@ import { PeriodCountdown } from "@/components/brutalist/PeriodCountdown";
 import { StackedShareBar } from "@/components/charts/StackedShareBar";
 import { RevenueBars } from "@/components/charts/RevenueBars";
 import { SkillLoopMotif } from "@/components/loop/SkillLoopMotif";
+import { TxStatus } from "@/components/brutalist/TxStatus";
+import { getConnection } from "@/lib/chain/connection";
+import { getChainConfig } from "@/lib/chain/config";
+import { subscribe as chainSubscribe, settlePeriod as chainSettle } from "@/lib/chain/tx";
+import { getProgram } from "@/lib/chain/program";
+import { pdas } from "@/lib/chain/pdas";
 
 interface PageProps {
   params: { id: string };
@@ -30,6 +37,8 @@ export default function SkillPage({ params }: PageProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [loopTrigger, setLoopTrigger] = useState(0);
   const prevShares = useRef<number | null>(null);
+  const [txStatus, setTxStatus] = useState<"idle" | "signing" | "confirming" | "confirmed" | "error">("idle");
+  const [txSig, setTxSig] = useState<string | undefined>();
 
   async function load() {
     try {
@@ -63,32 +72,44 @@ export default function SkillPage({ params }: PageProps) {
 
   async function onSubscribe() {
     if (!wallet) return alert("Connect Phantom first");
-    setSigning(`Subscribe — ${fmtSol(data.skill.subscriptionPrice, 4)}`);
+    setTxStatus("signing");
+    setTxSig(undefined);
     try {
-      const { signatureBase58 } = await signMessage(
-        w,
-        `SLP SUBSCRIBE\nskill: ${params.id}\nprice: ${data.skill.subscriptionPrice} lamports\nt: ${Date.now()}`
-      );
-      await api.subscribe(wallet, signatureBase58, { skill_id: params.id });
+      const { programId } = getChainConfig();
+      const result = await chainSubscribe(getConnection(), w as any, programId, new PublicKey(params.id));
+      setTxSig(result.sig);
+      setTxStatus("confirmed");
       await load();
     } catch (e: any) {
       setErr(e?.message ?? "subscribe failed");
-    } finally {
-      setSigning(null);
+      setTxStatus("error");
     }
   }
 
   async function onSettle() {
     if (!wallet) return alert("Connect Phantom first");
-    setSigning("Settle period");
+    setTxStatus("signing");
+    setTxSig(undefined);
     try {
-      const { signatureBase58 } = await signMessage(w, `SLP SETTLE\nskill: ${params.id}\nt: ${Date.now()}`);
-      await api.settle(wallet, signatureBase58, params.id);
+      const { programId } = getChainConfig();
+      const conn = getConnection();
+      const skillPk = new PublicKey(params.id);
+      const program = getProgram(conn, w as any, programId);
+      const [poolPda] = pdas.revenuePool(programId, skillPk);
+      const poolAcct = await (program.account as any).revenuePool.fetch(poolPda);
+      const nextSnapshotId = BigInt(poolAcct.snapshotId.toString()) + 1n;
+      const holders = (data.holders ?? [])
+        .filter((h: any) => h.shares > 0)
+        .map((h: any) => new PublicKey(h.holder));
+      const result = await chainSettle(conn, w as any, {
+        programId, skill: skillPk, nextSnapshotId, holders,
+      });
+      setTxSig(result.sig);
+      setTxStatus("confirmed");
       await load();
     } catch (e: any) {
       setErr(e?.message ?? "settle failed");
-    } finally {
-      setSigning(null);
+      setTxStatus("error");
     }
   }
 
@@ -149,6 +170,7 @@ export default function SkillPage({ params }: PageProps) {
                 <Btn variant="ghost" onClick={onPreview}>Decrypt · preview</Btn>
               ) : null}
             </div>
+            <TxStatus status={txStatus} sig={txSig} cluster={getChainConfig().cluster} error={err ?? undefined} />
           </div>
           <div className="col-span-12 lg:col-span-4 border-t lg:border-t-0 lg:border-l border-ink bg-paper flex items-center justify-center p-4">
             <SkillLoopMotif size={260} spinTrigger={loopTrigger} />

@@ -1,0 +1,1744 @@
+{
+  "address": "88GS45m28ostoHorQLrQmTw2u9pU5hhRt8seHtdnByg2",
+  "metadata": {
+    "name": "slp",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Skill Loops Protocol"
+  },
+  "instructions": [
+    {
+      "name": "claim_revenue",
+      "discriminator": [
+        4,
+        22,
+        151,
+        70,
+        183,
+        79,
+        73,
+        189
+      ],
+      "accounts": [
+        {
+          "name": "holder",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "claimable"
+          ]
+        },
+        {
+          "name": "skill",
+          "relations": [
+            "pool",
+            "claimable"
+          ]
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "skill"
+              }
+            ]
+          }
+        },
+        {
+          "name": "claimable",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  97,
+                  105,
+                  109
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "skill"
+              },
+              {
+                "kind": "account",
+                "path": "holder"
+              },
+              {
+                "kind": "account",
+                "path": "claimable.snapshot_id",
+                "account": "ClaimableRevenue"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "evaluate_experience",
+      "discriminator": [
+        116,
+        16,
+        51,
+        210,
+        156,
+        7,
+        237,
+        55
+      ],
+      "accounts": [
+        {
+          "name": "judge",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "skill",
+          "relations": [
+            "experience",
+            "ledger"
+          ]
+        },
+        {
+          "name": "experience",
+          "writable": true
+        },
+        {
+          "name": "ledger",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  101,
+                  100,
+                  103,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "skill"
+              }
+            ]
+          }
+        },
+        {
+          "name": "contributor_share",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  104,
+                  97,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "skill"
+              },
+              {
+                "kind": "account",
+                "path": "experience.contributor",
+                "account": "ExperienceRecord"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "score",
+          "type": "u8"
+        },
+        {
+          "name": "judge_report_tx_id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "initialize_protocol",
+      "discriminator": [
+        188,
+        233,
+        252,
+        106,
+        134,
+        146,
+        202,
+        91
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "judge",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "publish_new_version",
+      "discriminator": [
+        130,
+        91,
+        146,
+        229,
+        133,
+        180,
+        238,
+        199
+      ],
+      "accounts": [
+        {
+          "name": "author",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "skill"
+          ]
+        },
+        {
+          "name": "skill",
+          "writable": true
+        },
+        {
+          "name": "new_version",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "PublishNewVersionArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "publish_skill",
+      "discriminator": [
+        40,
+        197,
+        180,
+        144,
+        24,
+        187,
+        170,
+        130
+      ],
+      "accounts": [
+        {
+          "name": "author",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "skill",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  107,
+                  105,
+                  108,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "author"
+              },
+              {
+                "kind": "arg",
+                "path": "args.name_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "version",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  114,
+                  115,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "skill"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  1,
+                  0,
+                  0,
+                  0
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "ledger",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  101,
+                  100,
+                  103,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "skill"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "skill"
+              }
+            ]
+          }
+        },
+        {
+          "name": "author_share",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  104,
+                  97,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "skill"
+              },
+              {
+                "kind": "account",
+                "path": "author"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "PublishSkillArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "settle_period",
+      "discriminator": [
+        115,
+        57,
+        95,
+        16,
+        21,
+        107,
+        129,
+        130
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "skill",
+          "relations": [
+            "pool",
+            "ledger"
+          ]
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "skill"
+              }
+            ]
+          }
+        },
+        {
+          "name": "ledger",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  101,
+                  100,
+                  103,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "skill"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "submit_experience",
+      "discriminator": [
+        125,
+        139,
+        27,
+        118,
+        164,
+        246,
+        219,
+        139
+      ],
+      "accounts": [
+        {
+          "name": "contributor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "skill",
+          "writable": true
+        },
+        {
+          "name": "experience",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  120,
+                  112
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "skill"
+              },
+              {
+                "kind": "account",
+                "path": "skill.next_experience_id",
+                "account": "Skill"
+              }
+            ]
+          }
+        },
+        {
+          "name": "contributor_share",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  104,
+                  97,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "skill"
+              },
+              {
+                "kind": "account",
+                "path": "contributor"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "SubmitExperienceArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "subscribe",
+      "discriminator": [
+        254,
+        28,
+        191,
+        138,
+        156,
+        179,
+        183,
+        53
+      ],
+      "accounts": [
+        {
+          "name": "subscriber",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "skill",
+          "writable": true,
+          "relations": [
+            "pool"
+          ]
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "skill"
+              }
+            ]
+          }
+        },
+        {
+          "name": "subscription",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  117,
+                  98
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "skill"
+              },
+              {
+                "kind": "account",
+                "path": "subscriber"
+              }
+            ]
+          }
+        },
+        {
+          "name": "share_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  104,
+                  97,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "skill"
+              },
+              {
+                "kind": "account",
+                "path": "subscriber"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "ClaimableRevenue",
+      "discriminator": [
+        89,
+        123,
+        246,
+        130,
+        194,
+        189,
+        209,
+        3
+      ]
+    },
+    {
+      "name": "ExperienceRecord",
+      "discriminator": [
+        182,
+        105,
+        65,
+        175,
+        65,
+        142,
+        108,
+        154
+      ]
+    },
+    {
+      "name": "ProtocolConfig",
+      "discriminator": [
+        207,
+        91,
+        250,
+        28,
+        152,
+        179,
+        215,
+        209
+      ]
+    },
+    {
+      "name": "RevenuePool",
+      "discriminator": [
+        207,
+        111,
+        81,
+        33,
+        143,
+        210,
+        93,
+        113
+      ]
+    },
+    {
+      "name": "ShareAccount",
+      "discriminator": [
+        244,
+        129,
+        214,
+        179,
+        30,
+        194,
+        247,
+        141
+      ]
+    },
+    {
+      "name": "ShareLedger",
+      "discriminator": [
+        194,
+        86,
+        226,
+        29,
+        94,
+        43,
+        247,
+        123
+      ]
+    },
+    {
+      "name": "Skill",
+      "discriminator": [
+        53,
+        13,
+        242,
+        204,
+        77,
+        249,
+        1,
+        215
+      ]
+    },
+    {
+      "name": "SkillVersion",
+      "discriminator": [
+        92,
+        21,
+        185,
+        243,
+        174,
+        142,
+        222,
+        1
+      ]
+    },
+    {
+      "name": "Subscription",
+      "discriminator": [
+        64,
+        7,
+        26,
+        135,
+        102,
+        132,
+        98,
+        33
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "ExperienceEvaluated",
+      "discriminator": [
+        234,
+        250,
+        120,
+        37,
+        242,
+        9,
+        208,
+        253
+      ]
+    },
+    {
+      "name": "ExperienceSubmitted",
+      "discriminator": [
+        195,
+        91,
+        202,
+        79,
+        225,
+        78,
+        235,
+        80
+      ]
+    },
+    {
+      "name": "PeriodSettled",
+      "discriminator": [
+        118,
+        192,
+        157,
+        191,
+        128,
+        119,
+        137,
+        36
+      ]
+    },
+    {
+      "name": "RevenueClaimed",
+      "discriminator": [
+        5,
+        254,
+        104,
+        87,
+        133,
+        137,
+        45,
+        116
+      ]
+    },
+    {
+      "name": "SharesMinted",
+      "discriminator": [
+        127,
+        139,
+        238,
+        41,
+        118,
+        47,
+        122,
+        39
+      ]
+    },
+    {
+      "name": "SkillPublished",
+      "discriminator": [
+        249,
+        230,
+        13,
+        218,
+        21,
+        168,
+        74,
+        141
+      ]
+    },
+    {
+      "name": "Subscribed",
+      "discriminator": [
+        135,
+        59,
+        105,
+        76,
+        190,
+        236,
+        138,
+        228
+      ]
+    },
+    {
+      "name": "VersionPublished",
+      "discriminator": [
+        153,
+        232,
+        67,
+        69,
+        206,
+        21,
+        193,
+        185
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "NotJudge",
+      "msg": "Caller is not the protocol Judge"
+    },
+    {
+      "code": 6001,
+      "name": "AlreadyEvaluated",
+      "msg": "Experience already evaluated"
+    },
+    {
+      "code": 6002,
+      "name": "ScoreOutOfRange",
+      "msg": "Score must be 0..=50"
+    },
+    {
+      "code": 6003,
+      "name": "WrongSkill",
+      "msg": "Experience does not belong to this skill"
+    },
+    {
+      "code": 6004,
+      "name": "PeriodNotElapsed",
+      "msg": "Settlement period has not elapsed"
+    },
+    {
+      "code": 6005,
+      "name": "HoldersIncomplete",
+      "msg": "Settlement is missing holders"
+    },
+    {
+      "code": 6006,
+      "name": "ShareAccountMismatch",
+      "msg": "ShareAccount belongs to wrong skill"
+    },
+    {
+      "code": 6007,
+      "name": "SharesMustBeNonzero",
+      "msg": "Zero-share holders may not be settled"
+    },
+    {
+      "code": 6008,
+      "name": "WrongClaimPda",
+      "msg": "ClaimableRevenue PDA is incorrect"
+    },
+    {
+      "code": 6009,
+      "name": "NothingToClaim",
+      "msg": "Nothing to claim"
+    },
+    {
+      "code": 6010,
+      "name": "ZeroPrice",
+      "msg": "Subscription price cannot be zero"
+    },
+    {
+      "code": 6011,
+      "name": "FloorTooLow",
+      "msg": "Author ratio floor below protocol minimum"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidK",
+      "msg": "Contribution coefficient out of range"
+    },
+    {
+      "code": 6013,
+      "name": "StringTooLong",
+      "msg": "String field exceeds maximum length"
+    },
+    {
+      "code": 6014,
+      "name": "NotAuthor",
+      "msg": "Only the skill author can publish new versions"
+    },
+    {
+      "code": 6015,
+      "name": "TooManyContributors",
+      "msg": "Too many contributing experiences for one version"
+    },
+    {
+      "code": 6016,
+      "name": "PoolBelowRentExempt",
+      "msg": "Claim would leave pool below rent-exempt"
+    },
+    {
+      "code": 6017,
+      "name": "SettleAccountsUnpaired",
+      "msg": "Settle remaining_accounts must be paired (ShareAccount, ClaimableRevenue)"
+    }
+  ],
+  "types": [
+    {
+      "name": "ClaimableRevenue",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "holder",
+            "type": "pubkey"
+          },
+          {
+            "name": "skill",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "snapshot_id",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ExperienceEvaluated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "skill",
+            "type": "pubkey"
+          },
+          {
+            "name": "experience_id",
+            "type": "u64"
+          },
+          {
+            "name": "score",
+            "type": "u8"
+          },
+          {
+            "name": "shares_minted",
+            "type": "u64"
+          },
+          {
+            "name": "approved",
+            "type": "bool"
+          },
+          {
+            "name": "floor_hit",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ExperienceRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "experience_id",
+            "type": "u64"
+          },
+          {
+            "name": "skill",
+            "type": "pubkey"
+          },
+          {
+            "name": "contributor",
+            "type": "pubkey"
+          },
+          {
+            "name": "skill_version",
+            "type": "u32"
+          },
+          {
+            "name": "content_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "arweave_tx_id",
+            "type": "string"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "contribution_score",
+            "type": "u8"
+          },
+          {
+            "name": "shares_minted",
+            "type": "u64"
+          },
+          {
+            "name": "submitted_at",
+            "type": "i64"
+          },
+          {
+            "name": "evaluated_at",
+            "type": "i64"
+          },
+          {
+            "name": "judge_report_tx_id",
+            "type": "string"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ExperienceSubmitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "skill",
+            "type": "pubkey"
+          },
+          {
+            "name": "experience_id",
+            "type": "u64"
+          },
+          {
+            "name": "contributor",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PeriodSettled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "skill",
+            "type": "pubkey"
+          },
+          {
+            "name": "snapshot_id",
+            "type": "u64"
+          },
+          {
+            "name": "period_revenue",
+            "type": "u64"
+          },
+          {
+            "name": "total_shares",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProtocolConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "judge",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PublishNewVersionArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "content_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "arweave_tx_id",
+            "type": "string"
+          },
+          {
+            "name": "contributing_experience_ids",
+            "type": {
+              "vec": "u64"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PublishSkillArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "category",
+            "type": "string"
+          },
+          {
+            "name": "content_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "arweave_tx_id",
+            "type": "string"
+          },
+          {
+            "name": "subscription_price",
+            "type": "u64"
+          },
+          {
+            "name": "min_author_ratio_bps",
+            "type": "u16"
+          },
+          {
+            "name": "k",
+            "type": "u16"
+          },
+          {
+            "name": "period_length",
+            "type": "i64"
+          },
+          {
+            "name": "name_hash",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RevenueClaimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "skill",
+            "type": "pubkey"
+          },
+          {
+            "name": "holder",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "snapshot_id",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RevenuePool",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "skill",
+            "type": "pubkey"
+          },
+          {
+            "name": "current_period_revenue",
+            "type": "u64"
+          },
+          {
+            "name": "total_lifetime_revenue",
+            "type": "u64"
+          },
+          {
+            "name": "current_period_start",
+            "type": "i64"
+          },
+          {
+            "name": "period_length",
+            "type": "i64"
+          },
+          {
+            "name": "snapshot_total_shares",
+            "type": "u64"
+          },
+          {
+            "name": "snapshot_id",
+            "type": "u64"
+          },
+          {
+            "name": "last_settlement_time",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ShareAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "holder",
+            "type": "pubkey"
+          },
+          {
+            "name": "skill",
+            "type": "pubkey"
+          },
+          {
+            "name": "shares",
+            "type": "u64"
+          },
+          {
+            "name": "lock_until",
+            "type": "i64"
+          },
+          {
+            "name": "first_contribution_at",
+            "type": "i64"
+          },
+          {
+            "name": "last_contribution_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ShareLedger",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "skill",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_shares",
+            "type": "u64"
+          },
+          {
+            "name": "author_shares",
+            "type": "u64"
+          },
+          {
+            "name": "min_author_ratio_bps",
+            "type": "u16"
+          },
+          {
+            "name": "contributor_count",
+            "type": "u32"
+          },
+          {
+            "name": "last_snapshot_time",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SharesMinted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "skill",
+            "type": "pubkey"
+          },
+          {
+            "name": "holder",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "total_shares_after",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Skill",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "author",
+            "type": "pubkey"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "category",
+            "type": "string"
+          },
+          {
+            "name": "current_version",
+            "type": "u32"
+          },
+          {
+            "name": "content_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "arweave_tx_id",
+            "type": "string"
+          },
+          {
+            "name": "subscription_price",
+            "type": "u64"
+          },
+          {
+            "name": "min_author_ratio_bps",
+            "type": "u16"
+          },
+          {
+            "name": "k",
+            "type": "u16"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "updated_at",
+            "type": "i64"
+          },
+          {
+            "name": "subscriber_count",
+            "type": "u32"
+          },
+          {
+            "name": "total_revenue",
+            "type": "u64"
+          },
+          {
+            "name": "next_experience_id",
+            "type": "u64"
+          },
+          {
+            "name": "name_hash",
+            "type": {
+              "array": [
+                "u8",
+                16
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SkillPublished",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "skill",
+            "type": "pubkey"
+          },
+          {
+            "name": "author",
+            "type": "pubkey"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SkillVersion",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "skill",
+            "type": "pubkey"
+          },
+          {
+            "name": "version",
+            "type": "u32"
+          },
+          {
+            "name": "content_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "arweave_tx_id",
+            "type": "string"
+          },
+          {
+            "name": "contributing_experience_ids",
+            "type": {
+              "vec": "u64"
+            }
+          },
+          {
+            "name": "published_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SubmitExperienceArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "content_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "arweave_tx_id",
+            "type": "string"
+          },
+          {
+            "name": "skill_version",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Subscribed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "skill",
+            "type": "pubkey"
+          },
+          {
+            "name": "subscriber",
+            "type": "pubkey"
+          },
+          {
+            "name": "expiry_time",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Subscription",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "subscriber",
+            "type": "pubkey"
+          },
+          {
+            "name": "skill",
+            "type": "pubkey"
+          },
+          {
+            "name": "start_time",
+            "type": "i64"
+          },
+          {
+            "name": "expiry_time",
+            "type": "i64"
+          },
+          {
+            "name": "total_calls",
+            "type": "u64"
+          },
+          {
+            "name": "is_active",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VersionPublished",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "skill",
+            "type": "pubkey"
+          },
+          {
+            "name": "version",
+            "type": "u32"
+          },
+          {
+            "name": "contributing_count",
+            "type": "u32"
+          }
+        ]
+      }
+    }
+  ]
+}

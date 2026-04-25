@@ -1,10 +1,6 @@
 import { NextRequest } from "next/server";
-import { z } from "zod";
 import { getDb } from "@/lib/db";
-import { effectiveActor, guarded, bad } from "@/lib/api-helpers";
-import { publishSkill, getPeriodLengthSeconds } from "@/lib/services";
-import { PublishSkillSchema } from "@/lib/schemas";
-import { solToLamports } from "@/lib/units";
+import { guarded } from "@/lib/api-helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -36,24 +32,6 @@ export async function GET(req: NextRequest) {
       }
     });
     return rows.map(shape);
-  });
-}
-
-export async function POST(req: NextRequest) {
-  return guarded(async () => {
-    const body = PublishSkillSchema.parse(await req.json());
-    const author = effectiveActor(req);
-    const result = publishSkill({
-      author,
-      name: body.name,
-      description: body.description,
-      category: body.category,
-      content: body.content,
-      subscriptionPriceLamports: solToLamports(body.subscription_price_sol),
-      minAuthorRatioBps: body.min_author_ratio_bps,
-      periodLengthSeconds: getPeriodLengthSeconds(),
-    });
-    return result;
   });
 }
 

@@ -1,0 +1,275 @@
+import type { Connection } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
+import type { Database as DB } from "better-sqlite3";
+import { getDb } from "@/lib/db";
+import { getConnection } from "./chain/connection";
+import { getChainConfig } from "./chain/config";
+import { decodeEvents, type SlpEvent } from "./chain/events";
+import { now } from "@/lib/mock/clock";
+
+interface IndexerState { running: boolean; lastTick: number }
+
+const state: IndexerState = { running: false, lastTick: 0 };
+let intervalHandle: ReturnType<typeof setInterval> | null = null;
+
+export function isRunning(): boolean { return state.running; }
+
+export function start(): void {
+  if (intervalHandle) return;
+  const interval = Number(process.env.INDEXER_POLL_INTERVAL_MS ?? "2000");
+  state.running = true;
+  intervalHandle = setInterval(() => { tick().catch((e) => console.error("[indexer]", e)); }, interval);
+}
+
+export function stop(): void {
+  if (intervalHandle) clearInterval(intervalHandle);
+  intervalHandle = null;
+  state.running = false;
+}
+
+export async function tick(opts: { sig?: string } = {}): Promise<{ processed: number }> {
+  const conn = getConnection();
+  const { programId } = getChainConfig();
+  const db = getDb();
+  let processed = 0;
+
+  if (opts.sig) {
+    if (isAlreadyIndexed(db, opts.sig)) return { processed: 0 };
+    const tx = await conn.getTransaction(opts.sig, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+    if (!tx) return { processed: 0 };
+    await processOne(conn, db, opts.sig, tx.slot, tx.meta?.logMessages ?? []);
+    processed += 1;
+    state.lastTick = now();
+    return { processed };
+  }
+
+  const lastSeen = getLastSeenSig(db);
+  const sigs = await conn.getSignaturesForAddress(programId, { until: lastSeen ?? undefined, limit: 100 });
+  for (let i = sigs.length - 1; i >= 0; i--) {
+    const s = sigs[i];
+    if (isAlreadyIndexed(db, s.signature)) continue;
+    const tx = await conn.getTransaction(s.signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+    if (!tx) continue;
+    await processOne(conn, db, s.signature, s.slot, tx.meta?.logMessages ?? []);
+    setLastSeenSig(db, s.signature, s.slot);
+    processed += 1;
+  }
+  state.lastTick = now();
+  return { processed };
+}
+
+function isAlreadyIndexed(db: DB, sig: string): boolean {
+  const row = db.prepare(`SELECT 1 FROM indexed_signatures WHERE signature = ?`).get(sig);
+  return Boolean(row);
+}
+
+function getLastSeenSig(db: DB): string | null {
+  const row = db.prepare(`SELECT last_seen_sig FROM indexer_state WHERE id = 1`).get() as any;
+  return row?.last_seen_sig ?? null;
+}
+
+function setLastSeenSig(db: DB, sig: string, slot: number) {
+  db.prepare(`INSERT INTO indexer_state (id, last_seen_sig, last_seen_slot, updated_at)
+              VALUES (1, ?, ?, ?)
+              ON CONFLICT(id) DO UPDATE SET last_seen_sig = excluded.last_seen_sig,
+                                            last_seen_slot = excluded.last_seen_slot,
+                                            updated_at = excluded.updated_at`)
+    .run(sig, slot, now());
+}
+
+async function processOne(
+  conn: Connection, db: DB, sig: string, slot: number, logs: string[],
+) {
+  const events = decodeEvents(logs);
+  const t = now();
+  const tx = db.transaction(() => {
+    for (const ev of events) applyEventLocal(db, ev);
+    db.prepare(`INSERT OR REPLACE INTO indexed_signatures (signature, slot, status, error_code, processed_at)
+                VALUES (?, ?, 'ok', NULL, ?)`).run(sig, slot, t);
+  });
+  try { tx(); }
+  catch (e) {
+    db.prepare(`INSERT OR REPLACE INTO indexed_signatures (signature, slot, status, error_code, processed_at)
+                VALUES (?, ?, 'parse_failed', ?, ?)`)
+      .run(sig, slot, (e as Error).message ?? "parse_failed", t);
+    return;
+  }
+  // Post-commit enrichment: fetch on-chain account data for events that need it.
+  for (const ev of events) {
+    try { await enrichAfterCommit(conn, db, ev); } catch (e) { console.error("[indexer] enrich failed:", e); }
+  }
+}
+
+// Exported for testing only — calls applyEventLocal without needing a Connection.
+export async function applyEventForTest(
+  db: DB, ev: SlpEvent, sig: string, _slot: number, _skipFetch: boolean,
+): Promise<void> {
+  const already = db.prepare(`SELECT 1 FROM indexed_signatures WHERE signature = ?`).get(sig);
+  if (already) return;
+  applyEventLocal(db, ev);
+}
+
+function applyEventLocal(db: DB, ev: SlpEvent): void {
+  const t = now();
+  switch (ev.name) {
+    case "SkillPublished": {
+      const skillId = (ev.data.skill as PublicKey).toBase58();
+      const author = (ev.data.author as PublicKey).toBase58();
+      const createdAt = Number(ev.data.createdAt);
+      db.prepare(`INSERT OR IGNORE INTO skills
+        (skill_id, author, name, description, category, current_version, content_hash, arweave_tx_id, subscription_price, min_author_ratio_bps, created_at, updated_at, subscriber_count, total_revenue)
+        VALUES (?,?,?,?,?,1,?,?,?,?,?,?,0,0)`)
+        .run(skillId, author, "<pending>", "", "uncategorized",
+             "", "", 0, 0, createdAt, createdAt);
+      db.prepare(`INSERT OR IGNORE INTO share_ledgers
+        (skill_id, total_shares, author_shares, min_author_ratio_bps, contributor_count, last_snapshot_time)
+        VALUES (?, 1000, 1000, 0, 0, ?)`).run(skillId, createdAt);
+      db.prepare(`INSERT OR IGNORE INTO share_accounts
+        (holder, skill_id, shares, lock_until, first_contribution_at, last_contribution_at)
+        VALUES (?, ?, 1000, 0, NULL, NULL)`).run(author, skillId);
+      db.prepare(`INSERT OR IGNORE INTO revenue_pools
+        (skill_id, current_period_revenue, total_lifetime_revenue, current_period_start, period_length, snapshot_total_shares, last_settlement_time)
+        VALUES (?, 0, 0, ?, 300, 0, 0)`).run(skillId, createdAt);
+      db.prepare(`INSERT OR IGNORE INTO skill_versions
+        (skill_id, version, content_hash, arweave_tx_id, contributing_experience_ids, published_at)
+        VALUES (?, 1, '', '', '[]', ?)`).run(skillId, createdAt);
+      return;
+    }
+    case "Subscribed": {
+      const skillId = (ev.data.skill as PublicKey).toBase58();
+      const subscriber = (ev.data.subscriber as PublicKey).toBase58();
+      const expiry = Number(ev.data.expiryTime);
+      const existing = db.prepare(`SELECT 1 FROM subscriptions WHERE subscriber=? AND skill_id=?`).get(subscriber, skillId);
+      const skillRow = db.prepare(`SELECT subscription_price FROM skills WHERE skill_id = ?`).get(skillId) as any;
+      const price = skillRow?.subscription_price ?? 0;
+      if (!existing) {
+        db.prepare(`INSERT INTO subscriptions (subscriber, skill_id, start_time, expiry_time, total_calls, is_active) VALUES (?,?,?,?,0,1)`)
+          .run(subscriber, skillId, t, expiry);
+        db.prepare(`UPDATE skills SET subscriber_count = subscriber_count + 1 WHERE skill_id = ?`).run(skillId);
+      } else {
+        db.prepare(`UPDATE subscriptions SET expiry_time = ?, is_active = 1 WHERE subscriber = ? AND skill_id = ?`)
+          .run(expiry, subscriber, skillId);
+      }
+      db.prepare(`INSERT OR IGNORE INTO share_accounts (holder, skill_id, shares, lock_until) VALUES (?,?,0,0)`)
+        .run(subscriber, skillId);
+      db.prepare(`UPDATE skills SET total_revenue = total_revenue + ? WHERE skill_id = ?`).run(price, skillId);
+      db.prepare(`UPDATE revenue_pools SET current_period_revenue = current_period_revenue + ? WHERE skill_id = ?`).run(price, skillId);
+      return;
+    }
+    case "ExperienceSubmitted": {
+      const skillId = (ev.data.skill as PublicKey).toBase58();
+      const experienceId = Number(ev.data.experienceId);
+      const contributor = (ev.data.contributor as PublicKey).toBase58();
+      db.prepare(`INSERT OR IGNORE INTO experiences
+        (experience_id, skill_id, contributor, skill_version, content_hash, arweave_tx_id, bundle_json, status, submitted_at)
+        VALUES (?,?,?,1,'','','','Pending',?)`)
+        .run(experienceId, skillId, contributor, t);
+      db.prepare(`INSERT OR IGNORE INTO share_accounts (holder, skill_id, shares, lock_until) VALUES (?,?,0,0)`)
+        .run(contributor, skillId);
+      return;
+    }
+    case "ExperienceEvaluated": {
+      const skillId = (ev.data.skill as PublicKey).toBase58();
+      const experienceId = Number(ev.data.experienceId);
+      const score = Number(ev.data.score);
+      const approved = Boolean(ev.data.approved);
+      db.prepare(`UPDATE experiences SET status = ?, contribution_score = ?, evaluated_at = ? WHERE skill_id = ? AND experience_id = ?`)
+        .run(approved ? "Evaluated" : "Rejected", score, t, skillId, experienceId);
+      return;
+    }
+    case "SharesMinted": {
+      const skillId = (ev.data.skill as PublicKey).toBase58();
+      const holder = (ev.data.holder as PublicKey).toBase58();
+      const amount = Number(ev.data.amount);
+      const totalAfter = Number(ev.data.totalSharesAfter);
+      const existing = db.prepare(`SELECT shares FROM share_accounts WHERE holder=? AND skill_id=?`).get(holder, skillId) as any;
+      const wasZero = (existing?.shares ?? 0) === 0;
+      db.prepare(`UPDATE share_ledgers SET total_shares = ?, last_snapshot_time = ? WHERE skill_id = ?`).run(totalAfter, t, skillId);
+      if (wasZero && amount > 0) {
+        db.prepare(`UPDATE share_ledgers SET contributor_count = contributor_count + 1 WHERE skill_id = ?`).run(skillId);
+      }
+      db.prepare(`UPDATE share_accounts
+        SET shares = shares + ?,
+            lock_until = ?,
+            first_contribution_at = COALESCE(first_contribution_at, ?),
+            last_contribution_at = ?
+        WHERE holder = ? AND skill_id = ?`)
+        .run(amount, t + 180 * 24 * 60 * 60, t, t, holder, skillId);
+      return;
+    }
+    case "PeriodSettled": {
+      const skillId = (ev.data.skill as PublicKey).toBase58();
+      const periodRevenue = Number(ev.data.periodRevenue);
+      const totalShares = Number(ev.data.totalShares);
+      const pool = db.prepare(`SELECT current_period_start, period_length FROM revenue_pools WHERE skill_id = ?`).get(skillId) as any;
+      const periodStart = pool?.current_period_start ?? t;
+      db.prepare(`INSERT INTO revenue_history (skill_id, period_start, period_end, period_revenue, snapshot_total_shares) VALUES (?,?,?,?,?)`)
+        .run(skillId, periodStart, t, periodRevenue, totalShares);
+      db.prepare(`UPDATE revenue_pools SET
+          current_period_revenue = 0,
+          total_lifetime_revenue = total_lifetime_revenue + ?,
+          current_period_start = ?,
+          snapshot_total_shares = ?,
+          last_settlement_time = ?
+          WHERE skill_id = ?`)
+        .run(periodRevenue, t, totalShares, t, skillId);
+      // per-holder claimable rows are backfilled via enrichAfterCommit (getProgramAccounts)
+      return;
+    }
+    case "RevenueClaimed": {
+      const skillId = (ev.data.skill as PublicKey).toBase58();
+      const holder = (ev.data.holder as PublicKey).toBase58();
+      const snapshotId = Number(ev.data.snapshotId);
+      db.prepare(`UPDATE claimable_revenue SET amount = 0 WHERE holder = ? AND skill_id = ? AND snapshot_id = ?`)
+        .run(holder, skillId, snapshotId);
+      return;
+    }
+    case "VersionPublished": {
+      const skillId = (ev.data.skill as PublicKey).toBase58();
+      const version = Number(ev.data.version);
+      db.prepare(`INSERT OR IGNORE INTO skill_versions (skill_id, version, content_hash, arweave_tx_id, contributing_experience_ids, published_at) VALUES (?,?, '', '', '[]', ?)`)
+        .run(skillId, version, t);
+      db.prepare(`UPDATE skills SET current_version = ?, updated_at = ? WHERE skill_id = ?`)
+        .run(version, t, skillId);
+      return;
+    }
+  }
+}
+
+async function enrichAfterCommit(conn: Connection, db: DB, ev: SlpEvent): Promise<void> {
+  const { getProgram } = await import("./chain/program");
+  const program = getProgram(conn, {
+    publicKey: new PublicKey("11111111111111111111111111111112"),
+    signTransaction: async (t: any) => t,
+  });
+  if (ev.name === "SkillPublished") {
+    const skillPk = ev.data.skill as PublicKey;
+    try {
+      const acct = await (program.account as any).skill.fetch(skillPk);
+      db.prepare(`UPDATE skills SET
+          name = ?, description = ?, category = ?,
+          content_hash = ?, arweave_tx_id = ?,
+          subscription_price = ?, min_author_ratio_bps = ?
+          WHERE skill_id = ?`)
+        .run(acct.name, acct.description, acct.category,
+             Buffer.from(acct.contentHash).toString("hex"), acct.arweaveTxId,
+             Number(acct.subscriptionPrice.toString()), acct.minAuthorRatioBps,
+             skillPk.toBase58());
+    } catch (e) { console.error("[indexer] enrich skill failed", e); }
+  }
+  if (ev.name === "PeriodSettled") {
+    const skillPk = ev.data.skill as PublicKey;
+    const snapshotId = BigInt(ev.data.snapshotId.toString());
+    try {
+      const all = await (program.account as any).claimableRevenue.all([
+        { memcmp: { offset: 8 + 32, bytes: skillPk.toBase58() } },
+      ]);
+      for (const item of all) {
+        if (Number(item.account.snapshotId.toString()) !== Number(snapshotId)) continue;
+        db.prepare(`INSERT OR REPLACE INTO claimable_revenue (holder, skill_id, amount, snapshot_id) VALUES (?,?,?,?)`)
+          .run(item.account.holder.toBase58(), skillPk.toBase58(),
+               Number(item.account.amount.toString()), Number(snapshotId));
+      }
+    } catch (e) { console.error("[indexer] enrich claims failed", e); }
+  }
+}

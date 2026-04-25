@@ -3,12 +3,23 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { PublicKey } from "@solana/web3.js";
 import { api } from "@/lib/api-client";
 import { ExperienceBundleSchema } from "@/lib/schemas";
-import { signMessage } from "@/lib/wallet";
 import { LabeledBox } from "@/components/brutalist/LabeledBox";
 import { Btn } from "@/components/brutalist/Btn";
 import { PhantomSignPending } from "@/components/brutalist/PhantomSignPending";
+import { TxStatus } from "@/components/brutalist/TxStatus";
+import { getConnection } from "@/lib/chain/connection";
+import { getChainConfig } from "@/lib/chain/config";
+import { submitExperience as chainSubmit, getNextExperienceId } from "@/lib/chain/tx";
+import { signMessage } from "@/lib/wallet";
+
+async function sha256Bytes(content: string): Promise<Uint8Array> {
+  const buf = new TextEncoder().encode(content);
+  const digest = await crypto.subtle.digest("SHA-256", buf);
+  return new Uint8Array(digest);
+}
 
 export default function SubmitPage() {
   const w = useWallet();
@@ -17,6 +28,8 @@ export default function SubmitPage() {
   const [text, setText] = useState("");
   const [signing, setSigning] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [txStatus, setTxStatus] = useState<"idle" | "signing" | "confirming" | "confirmed" | "error">("idle");
+  const [txSig, setTxSig] = useState<string | undefined>();
 
   const validation = useMemo(() => {
     if (!text.trim()) return { ok: false as const, errors: [] as string[], bundle: null };
@@ -42,6 +55,9 @@ export default function SubmitPage() {
     if (!validation.ok) return;
     const bundle = validation.bundle;
     const json = JSON.stringify(bundle);
+    setErr(null);
+    setTxStatus("idle");
+    setTxSig(undefined);
     try {
       setSigning("Approve Irys upload");
       const { signatureBase58: sig1 } = await signMessage(w, `SLP IRYS SUBMIT\ntrace: ${bundle.trace_id}\nt: ${Date.now()}`);
@@ -53,16 +69,28 @@ export default function SubmitPage() {
           { name: "SkillId", value: bundle.skill_id },
         ],
       });
-      setSigning("Approve submit transaction");
-      const { signatureBase58: sig2 } = await signMessage(w, `SLP SUBMIT\ntx: ${upload.txId}\nt: ${Date.now()}`);
-      const r = await api.submitExperience(wallet, sig2, {
-        skill_id: bundle.skill_id,
-        arweave_tx_id: upload.txId,
-        bundle_json: json,
+      setSigning(null);
+
+      setTxStatus("signing");
+      const { programId } = getChainConfig();
+      const conn = getConnection();
+      const skillPk = new PublicKey(bundle.skill_id);
+      const nextExpId = await getNextExperienceId(conn, programId, skillPk);
+      const contentHash = await sha256Bytes(json);
+      const result = await chainSubmit(conn, w as any, {
+        programId,
+        skill: skillPk,
+        nextExperienceId: nextExpId,
+        contentHash,
+        arweaveTxId: upload.txId,
+        skillVersion: bundle.skill_version,
       });
-      router.push(`/me?tab=contributions&expId=${r.experienceId}`);
+      setTxSig(result.sig);
+      setTxStatus("confirmed");
+      router.push(`/me?tab=contributions&expId=${nextExpId.toString()}`);
     } catch (e: any) {
       setErr(e?.message ?? "submit failed");
+      setTxStatus("error");
     } finally {
       setSigning(null);
     }
@@ -89,9 +117,10 @@ export default function SubmitPage() {
           <Btn variant="primary" onClick={onSubmit} disabled={!validation.ok || !wallet}>
             {wallet ? "Sign & submit" : "Connect wallet to submit"}
           </Btn>
-          <span className="caption">two signatures · Irys + submit tx</span>
+          <span className="caption">Irys upload · Phantom-signed devnet tx</span>
         </div>
         {err ? <div className="plate text-accent mt-3">error: {err}</div> : null}
+        <TxStatus status={txStatus} sig={txSig} cluster={getChainConfig().cluster} error={err ?? undefined} />
       </LabeledBox>
 
       <aside className="col-span-12 lg:col-span-4 flex flex-col gap-4">

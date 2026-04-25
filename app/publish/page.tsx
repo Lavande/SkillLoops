@@ -3,11 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { api } from "@/lib/api-client";
 import { signMessage } from "@/lib/wallet";
 import { LabeledBox } from "@/components/brutalist/LabeledBox";
 import { Btn } from "@/components/brutalist/Btn";
 import { PhantomSignPending } from "@/components/brutalist/PhantomSignPending";
+import { TxStatus } from "@/components/brutalist/TxStatus";
+import { getConnection } from "@/lib/chain/connection";
+import { getChainConfig } from "@/lib/chain/config";
+import { publishSkill } from "@/lib/chain/tx";
+
+type TxState = "idle" | "signing" | "confirming" | "confirmed" | "error";
 
 export default function PublishPage() {
   const w = useWallet();
@@ -15,6 +22,8 @@ export default function PublishPage() {
   const router = useRouter();
   const [signing, setSigning] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [txStatus, setTxStatus] = useState<TxState>("idle");
+  const [txSig, setTxSig] = useState<string | undefined>();
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -28,32 +37,51 @@ export default function PublishPage() {
     e.preventDefault();
     if (!wallet) return alert("Connect Phantom first");
     setErr(null);
+    setTxStatus("idle");
+    setTxSig(undefined);
 
     try {
-      // step 1 — sign Irys upload
       setSigning("Approve Irys upload");
       const { signatureBase58: sig1 } = await signMessage(
         w,
         `SLP IRYS PUBLISH\nname: ${form.name}\nt: ${Date.now()}`
       );
-      // (the real Irys upload happens server-side inside publishSkill;
-      //  we still take the signature to match the production beat)
+      const upload = await api.uploadIrys(wallet, sig1, {
+        content: form.content,
+        tags: [
+          { name: "Protocol", value: "SLP" },
+          { name: "Type", value: "SkillContent" },
+          { name: "Name", value: form.name },
+        ],
+      });
+      setSigning(null);
 
-      // step 2 — sign publish tx
-      setSigning("Approve publish transaction");
-      const { signatureBase58: sig2 } = await signMessage(
-        w,
-        `SLP PUBLISH\nname: ${form.name}\nprice_sol: ${form.subscription_price_sol}\nfloor_bps: ${form.min_author_ratio_bps}\nt: ${Date.now()}`
-      );
-
-      const r = await api.publish(wallet, sig2, form);
-      router.push(`/skill/${r.skillId}`);
+      setTxStatus("signing");
+      const { programId } = getChainConfig();
+      const result = await publishSkill(getConnection(), w as any, {
+        programId,
+        name: form.name,
+        description: form.description,
+        category: form.category,
+        content: form.content,
+        arweaveTxId: upload.txId,
+        subscriptionPriceLamports: BigInt(Math.floor(form.subscription_price_sol * LAMPORTS_PER_SOL)),
+        minAuthorRatioBps: form.min_author_ratio_bps,
+        k: 10,
+        periodLengthSeconds: 300n,
+      });
+      setTxSig(result.sig);
+      setTxStatus("confirmed");
+      router.push(`/skill/${result.skillId}`);
     } catch (e: any) {
       setErr(e?.message ?? "publish failed");
+      setTxStatus("error");
     } finally {
       setSigning(null);
     }
   }
+
+  const { cluster } = getChainConfig();
 
   return (
     <div className="grid grid-cols-12 gap-6 pt-6">
@@ -114,12 +142,13 @@ export default function PublishPage() {
         </LabeledBox>
 
         {err ? <div className="plate text-accent">error: {err}</div> : null}
+        <TxStatus status={txStatus} sig={txSig} cluster={cluster} error={err ?? undefined} />
 
         <div className="flex items-center gap-3">
           <Btn variant="primary" type="submit" disabled={!wallet}>
             {wallet ? "Sign & publish" : "Connect wallet to publish"}
           </Btn>
-          <span className="caption">two signatures required · Irys + publish tx</span>
+          <span className="caption">Phantom signs once · sends a real devnet tx</span>
         </div>
       </form>
 
