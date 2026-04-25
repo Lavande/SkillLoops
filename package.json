@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:devnet": "SLP_DEVNET_E2E=1 playwright test tests/e2e/console-devnet.spec.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1",
