@@ -25,6 +25,8 @@ export function closeDb() {
   instance = null;
 }
 
+export function _resetSingletonForTesting() { instance = null; }
+
 export function resetDb() {
   const p = instance?.name;
   closeDb();
@@ -134,6 +136,19 @@ function migrate(db: DB) {
     CREATE TABLE IF NOT EXISTS balances (
       holder TEXT PRIMARY KEY,
       lamports INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS indexer_state (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      last_seen_sig TEXT,
+      last_seen_slot INTEGER,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS indexed_signatures (
+      signature TEXT PRIMARY KEY,
+      slot INTEGER NOT NULL,
+      status TEXT NOT NULL,
+      error_code TEXT,
+      processed_at INTEGER NOT NULL
     );
   `);
 }
