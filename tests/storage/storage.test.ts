@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 import { closeDb, getDb } from "@/lib/db";
 import { getStorageBackend, irysStorage, mockStorage } from "@/lib/storage";
 
@@ -35,5 +37,19 @@ describe("storage backends", () => {
 
     expect(obj).toBeNull();
     expect(fetchImpl).toHaveBeenCalledWith("https://gateway.example/missing-id");
+  });
+});
+
+describe("Irys API routes", () => {
+  it("upload route uses storage adapter instead of ArweaveMock directly", () => {
+    const src = fs.readFileSync(path.join(process.cwd(), "app/api/irys/upload/route.ts"), "utf8");
+    expect(src).toContain("getStorageBackend");
+    expect(src).not.toContain("ArweaveMock");
+  });
+
+  it("fetch route uses storage adapter instead of ArweaveMock directly", () => {
+    const src = fs.readFileSync(path.join(process.cwd(), "app/api/irys/[txId]/route.ts"), "utf8");
+    expect(src).toContain("getStorageBackend");
+    expect(src).not.toContain("ArweaveMock");
   });
 });
