@@ -1,5 +1,6 @@
 import {
   Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction, Keypair,
+  SYSVAR_RENT_PUBKEY,
 } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
 import { createHash } from "node:crypto";
@@ -263,6 +264,120 @@ export async function evaluateExperience(
     skill: args.skill, experienceId: args.experienceId,
     contributor: args.contributor, score: args.score,
     judgeReportTxId: args.judgeReportTxId,
+  });
+  return sendAndIndex(connection, signer, [ix]);
+}
+
+export async function buildSettlePeriodIx(args: {
+  programId: PublicKey; payer: PublicKey; skill: PublicKey;
+  nextSnapshotId: bigint; holders: PublicKey[];
+}): Promise<TransactionInstruction> {
+  const [pool] = pdas.revenuePool(args.programId, args.skill);
+  const [ledger] = pdas.shareLedger(args.programId, args.skill);
+  const remaining: { pubkey: PublicKey; isSigner: boolean; isWritable: boolean }[] = [];
+  for (const holder of args.holders) {
+    const [share] = pdas.shareAccount(args.programId, args.skill, holder);
+    const [claim] = pdas.claimable(args.programId, args.skill, holder, args.nextSnapshotId);
+    remaining.push({ pubkey: share, isSigner: false, isWritable: false });
+    remaining.push({ pubkey: claim, isSigner: false, isWritable: true });
+  }
+  const program = getProgram({ rpcEndpoint: "" } as unknown as Connection, {
+    publicKey: args.payer, signTransaction: async (t: any) => t,
+  }, args.programId);
+  return await program.methods
+    .settlePeriod()
+    .accountsPartial({
+      payer: args.payer,
+      skill: args.skill,
+      pool, ledger,
+      systemProgram: SystemProgram.programId,
+      rent: SYSVAR_RENT_PUBKEY,
+    })
+    .remainingAccounts(remaining)
+    .instruction();
+}
+
+export async function settlePeriod(
+  connection: Connection, signer: Signer, args: {
+    programId: PublicKey; skill: PublicKey; nextSnapshotId: bigint; holders: PublicKey[];
+  }
+): Promise<TxResult> {
+  const ix = await buildSettlePeriodIx({
+    programId: args.programId, payer: signer.publicKey,
+    skill: args.skill, nextSnapshotId: args.nextSnapshotId, holders: args.holders,
+  });
+  return sendAndIndex(connection, signer, [ix]);
+}
+
+export async function buildClaimRevenueIx(args: {
+  programId: PublicKey; holder: PublicKey; skill: PublicKey; snapshotId: bigint;
+}): Promise<TransactionInstruction> {
+  const [pool] = pdas.revenuePool(args.programId, args.skill);
+  const [claimable] = pdas.claimable(args.programId, args.skill, args.holder, args.snapshotId);
+  const program = getProgram({ rpcEndpoint: "" } as unknown as Connection, {
+    publicKey: args.holder, signTransaction: async (t: any) => t,
+  }, args.programId);
+  return await program.methods
+    .claimRevenue()
+    .accountsPartial({
+      holder: args.holder,
+      skill: args.skill,
+      pool, claimable,
+      rent: SYSVAR_RENT_PUBKEY,
+    })
+    .instruction();
+}
+
+export async function claimRevenue(
+  connection: Connection, signer: Signer, args: {
+    programId: PublicKey; skill: PublicKey; snapshotId: bigint;
+  }
+): Promise<TxResult> {
+  const ix = await buildClaimRevenueIx({
+    programId: args.programId, holder: signer.publicKey,
+    skill: args.skill, snapshotId: args.snapshotId,
+  });
+  return sendAndIndex(connection, signer, [ix]);
+}
+
+export async function buildPublishNewVersionIx(args: {
+  programId: PublicKey; author: PublicKey; skill: PublicKey;
+  currentVersion: number;
+  contentHash: Uint8Array; arweaveTxId: string;
+  contributingExperienceIds: bigint[];
+}): Promise<TransactionInstruction> {
+  const [newVersion] = pdas.skillVersion(args.programId, args.skill, args.currentVersion + 1);
+  const program = getProgram({ rpcEndpoint: "" } as unknown as Connection, {
+    publicKey: args.author, signTransaction: async (t: any) => t,
+  }, args.programId);
+  return await program.methods
+    .publishNewVersion({
+      contentHash: Array.from(args.contentHash),
+      arweaveTxId: args.arweaveTxId,
+      contributingExperienceIds: args.contributingExperienceIds.map((id) => new BN(id.toString())),
+    })
+    .accountsPartial({
+      author: args.author,
+      skill: args.skill,
+      newVersion,
+      systemProgram: SystemProgram.programId,
+    })
+    .instruction();
+}
+
+export async function publishNewVersion(
+  connection: Connection, signer: Signer, args: {
+    programId: PublicKey; skill: PublicKey; currentVersion: number;
+    content: string; arweaveTxId: string; contributingExperienceIds: bigint[];
+  }
+): Promise<TxResult> {
+  const contentHash = createHash("sha256").update(args.content).digest();
+  const ix = await buildPublishNewVersionIx({
+    programId: args.programId, author: signer.publicKey,
+    skill: args.skill, currentVersion: args.currentVersion,
+    contentHash: new Uint8Array(contentHash),
+    arweaveTxId: args.arweaveTxId,
+    contributingExperienceIds: args.contributingExperienceIds,
   });
   return sendAndIndex(connection, signer, [ix]);
 }
