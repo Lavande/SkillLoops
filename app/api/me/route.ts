@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
       .all(self) as any[];
     return {
       wallet: self,
-      balance: getSolBalance(self),
+      balance: await getSolBalance(self),
       published: published.map((r) => ({
         skillId: r.skill_id,
         name: r.name,
