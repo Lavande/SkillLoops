@@ -1,5 +1,7 @@
 #!/usr/bin/env tsx
-import "dotenv/config";
+import dotenv from "dotenv";
+dotenv.config();
+dotenv.config({ path: ".env.local", override: true });
 import { Keypair } from "@solana/web3.js";
 import fs from "node:fs";
 import { getConnection } from "../lib/chain/connection";

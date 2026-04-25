@@ -1,5 +1,7 @@
 #!/usr/bin/env tsx
-import "dotenv/config";
+import dotenv from "dotenv";
+dotenv.config();
+dotenv.config({ path: ".env.local", override: true });
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { ArweaveMock } from "../lib/mock/arweave";
 import { getConnection } from "../lib/chain/connection";
