@@ -48,3 +48,27 @@ pnpm test:e2e:devnet
 ```
 
 Walks `/console` through all six PRD acts and asserts that the indexer's projection matches on-chain state.
+
+## Slice 4 real Irys + Judge opt-in
+
+The default local demo still uses mock storage and the deterministic mock judge.
+To use real Irys storage and Anthropic scoring:
+
+```bash
+pnpm add @irys/upload @irys/upload-solana
+```
+
+Then set:
+
+```env
+STORAGE_BACKEND=irys
+IRYS_PRIVATE_KEY=<solana-private-key-or-secret-json>
+IRYS_GATEWAY_URL=https://gateway.irys.xyz
+IRYS_NETWORK=devnet
+
+JUDGE_BACKEND=anthropic
+ANTHROPIC_API_KEY=<key>
+ANTHROPIC_MODEL=claude-sonnet-4-5-20250929
+```
+
+Lit decrypt remains mocked in this slice.

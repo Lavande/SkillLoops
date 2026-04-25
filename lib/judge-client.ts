@@ -2,10 +2,10 @@ import { getDb } from "@/lib/db";
 import { getConnection } from "./chain/connection";
 import { getChainConfig } from "./chain/config";
 import { evaluateExperience } from "./chain/tx";
-import { ArweaveMock } from "./mock/arweave";
-import { scoreBundle, JUDGE_ID } from "./mock/judge";
+import { getJudgeScorer, JUDGE_ID } from "./judge/scorer";
 import { loadPersonaSigners } from "./personas";
 import type { ExperienceBundle } from "./schemas";
+import { getStorageBackend } from "./storage";
 import { PublicKey } from "@solana/web3.js";
 
 let running = false;
@@ -31,6 +31,8 @@ export async function evaluateOnce(): Promise<{ processed: number }> {
   if (!signers) return { processed: 0 };
   const conn = getConnection();
   const { programId } = getChainConfig();
+  const storage = getStorageBackend();
+  const scorer = getJudgeScorer();
 
   const pending = db.prepare(`SELECT experience_id, skill_id, bundle_json, contributor, arweave_tx_id
                               FROM experiences
@@ -43,7 +45,7 @@ export async function evaluateOnce(): Promise<{ processed: number }> {
       try { bundle = JSON.parse(row.bundle_json); } catch {}
     }
     if (!bundle) {
-      const obj = row.arweave_tx_id ? ArweaveMock.fetch(row.arweave_tx_id) : null;
+      const obj = row.arweave_tx_id ? await storage.fetch(row.arweave_tx_id) : null;
       if (obj?.content) {
         try { bundle = JSON.parse(obj.content); } catch {}
         if (bundle) db.prepare(`UPDATE experiences SET bundle_json = ? WHERE experience_id = ? AND skill_id = ?`)
@@ -57,10 +59,10 @@ export async function evaluateOnce(): Promise<{ processed: number }> {
     const priorBundles = priors
       .map((p) => { try { return JSON.parse(p.bundle_json); } catch { return null; } })
       .filter(Boolean);
-    const report = scoreBundle(bundle, priorBundles);
+    const report = await scorer.score(bundle, priorBundles);
     report.experience_id = row.experience_id;
 
-    const reportUp = ArweaveMock.upload(JSON.stringify(report, null, 2),
+    const reportUp = await storage.upload(JSON.stringify(report, null, 2),
       [{ name: "Protocol", value: "SLP" }, { name: "Type", value: "JudgeReport" }, { name: "ExperienceId", value: String(row.experience_id) }],
       JUDGE_ID);
 
