@@ -24,6 +24,7 @@ import {
 } from "@/lib/chain/tx";
 import { getProgram } from "@/lib/chain/program";
 import { pdas } from "@/lib/chain/pdas";
+import { buildConsoleDemoBundle } from "@/lib/demo/console-bundle";
 
 interface StepDef {
   id: string;
@@ -50,18 +51,6 @@ const STEPS: StepDef[] = [
   { id: "09", act: 5, actLabel: "CLAIM — BOB", title: "Bob claims his 27.5%", description: "Same beat for Bob. Carol stays at 0.", action: "claim_bob", persona: "bob", focus: "me" },
   { id: "10", act: 6, actLabel: "EVOLVE", title: "Alice publishes v1.1 with Bob's patch", description: "The Skill Loop motif completes one full rotation. Bob is permanently recorded as a contributor to v1.1.", action: "publish_v1_1", persona: "alice", focus: "skill", activeStage: "EVOLVE" },
 ];
-
-const DEMO_BUNDLE = {
-  trace_id: "trace-demo-bob-rust-pr-001",
-  outcome: "fail" as const,
-  steps_taken: 7,
-  artifacts_produced: ["review.md"],
-  reflection: {
-    what_worked: ["Caught missing tests", "Detected style drift"],
-    what_failed: ["Missed unsafe block in error path", "Didn't flag clone() loop"],
-    proposed_patch: "Add explicit checks for `unsafe` blocks and O(n) clone() patterns inside loops.",
-  },
-};
 
 type TxState = "idle" | "signing" | "confirming" | "confirmed" | "error";
 
@@ -228,7 +217,7 @@ export default function ConsolePage() {
       const signer = requireSigner(persona);
       const skillId = await loadAliceSkillId();
       const skillPk = new PublicKey(skillId);
-      const bundle = { ...DEMO_BUNDLE, skill_id: skillId, skill_version: 1 };
+      const bundle = buildConsoleDemoBundle(skillId, 1);
       const json = JSON.stringify(bundle);
 
       // Upload to mock Irys (returns deterministic txId).
@@ -334,7 +323,8 @@ export default function ConsolePage() {
       const baseContent = skillData?.skill?.name
         ? `# ${skillData.skill.name}\n\n${skillData.skill.description}\n\nStep 1: Load inputs.\nStep 2: Check for common smells.\nStep 3: Produce review.`
         : "# v1\nbase";
-      const v2Content = `${baseContent}\n\n## v1.1 patch (Bob)\n${DEMO_BUNDLE.reflection.proposed_patch}\n`;
+      const patch = buildConsoleDemoBundle(skillId, currentVersion).proposed_patch.diff;
+      const v2Content = `${baseContent}\n\n## v1.1 patch (Bob)\n${patch}\n`;
       const upload = await api.uploadIrys(signer.publicKey.toBase58(), "demo-mode-no-sig", {
         content: v2Content,
         tags: [
