@@ -9,6 +9,7 @@ next-env.d.ts
 
 # data (mock db is the reset button)
 data/
+.worktrees/
 
 # env
 .env
