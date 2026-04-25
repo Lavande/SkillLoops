@@ -8,7 +8,7 @@ import {
 
 const skillId = "7q6akTn3VYDoJjZ6Z8VFZrqmTuY7zj4KkT8hC8Q7DAoY";
 const author = "4oP88QmGg3TQeNYK8VfLR8EAwV96AcNmQMiYhDMnSCPu";
-const programId = "88GS45m28ostoHorQLrQmTw2u9pU5hhRt8seHtdnByg2";
+const programId = "5uTb4ZPTVB1HFMdTeBXELPzgaX2dcVRZoxPQW2SNzQAH";
 
 describe("getLitMode", () => {
   it("defaults to mock mode", () => {

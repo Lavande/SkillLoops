@@ -6,10 +6,10 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-slp = "88GS45m28ostoHorQLrQmTw2u9pU5hhRt8seHtdnByg2"
+slp = "5uTb4ZPTVB1HFMdTeBXELPzgaX2dcVRZoxPQW2SNzQAH"
 
 [programs.devnet]
-slp = "88GS45m28ostoHorQLrQmTw2u9pU5hhRt8seHtdnByg2"
+slp = "5uTb4ZPTVB1HFMdTeBXELPzgaX2dcVRZoxPQW2SNzQAH"
 
 [registry]
 url = "https://api.apr.dev"

@@ -31,4 +31,8 @@ async function main() {
   console.log("[init] initialized — sig:", sig);
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+main().catch((e) => {
+  console.error("Initialization failed:");
+  console.error(e);
+  process.exit(1);
+});

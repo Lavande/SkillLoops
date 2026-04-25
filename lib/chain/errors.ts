@@ -36,9 +36,11 @@ export function parseChainError(err: unknown, sig?: string): ChainError {
   const code = anyErr?.error?.errorCode?.code;
   if (typeof code === "string" && ERROR_MESSAGES[code]) return new ChainError(code, sig);
 
-  // Wallet rejection patterns (Phantom / Solflare)
-  const msg = anyErr?.message ?? "";
+  // Wallet rejection patterns
+  const msg = anyErr?.message ?? String(err);
   if (/rejected|user denied|cancell?ed/i.test(msg)) return new ChainError("SignatureDeclined", sig);
 
-  return new ChainError("Unknown", sig);
+  const e = new ChainError("Unknown", sig);
+  e.message = `${e.message} (${msg})`;
+  return e;
 }
