@@ -1,18 +1,8 @@
 import { NextRequest } from "next/server";
 import { getDb } from "@/lib/db";
-import { effectiveActor, guarded } from "@/lib/api-helpers";
-import { subscribe } from "@/lib/services";
-import { SubscribeSchema } from "@/lib/schemas";
+import { guarded } from "@/lib/api-helpers";
 
 export const dynamic = "force-dynamic";
-
-export async function POST(req: NextRequest) {
-  return guarded(async () => {
-    const body = SubscribeSchema.parse(await req.json());
-    const actor = effectiveActor(req);
-    return subscribe({ subscriber: actor, skillId: body.skill_id });
-  });
-}
 
 export async function GET(req: NextRequest) {
   return guarded(async () => {

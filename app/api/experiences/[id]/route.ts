@@ -1,8 +1,6 @@
 import { NextRequest } from "next/server";
 import { getDb } from "@/lib/db";
 import { ApiError, caller, guarded } from "@/lib/api-helpers";
-import { evaluatePending } from "@/lib/services";
-import { now } from "@/lib/mock/clock";
 
 export const dynamic = "force-dynamic";
 
@@ -13,15 +11,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const self = caller(req);
     const db = getDb();
 
-    // Lazy evaluate: if Pending and older than 3s, fire the judge now so polling
-    // recovers when setTimeout was lost (HMR, serverless cold start, etc.).
-    const row = db.prepare(`SELECT * FROM experiences WHERE experience_id = ?`).get(expId) as any;
-    if (!row) throw new ApiError(404, "experience_not_found");
-    if (row.status === "Pending" && row.submitted_at + 3 <= now()) {
-      evaluatePending(expId);
-    }
-
     const r = db.prepare(`SELECT * FROM experiences WHERE experience_id = ?`).get(expId) as any;
+    if (!r) throw new ApiError(404, "experience_not_found");
     const isContributor = self === r.contributor;
     const isShareholder = !!self && ((db.prepare(`SELECT shares FROM share_accounts WHERE holder = ? AND skill_id = ?`).get(self, r.skill_id) as any)?.shares ?? 0) > 0;
     const base = {
@@ -39,7 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     if (isContributor || isShareholder) {
       return {
         ...base,
-        bundle: JSON.parse(r.bundle_json),
+        bundle: r.bundle_json ? (() => { try { return JSON.parse(r.bundle_json); } catch { return null; } })() : null,
         judgeReport: r.judge_report_json ? JSON.parse(r.judge_report_json) : null,
         judgeReportTxId: r.judge_report_tx_id,
       };
