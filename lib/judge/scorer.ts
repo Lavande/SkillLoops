@@ -63,6 +63,7 @@ export const anthropicJudgeScorer = {
     if (!res.ok) throw new Error(`anthropic_judge_http_${res.status}`);
     const body = await res.json() as { content?: unknown[] };
     const input = extractToolInput(body.content);
+    if (!isRecord(input)) throw new Error("anthropic_judge_invalid_report: tool input must be an object");
     const parsed = JudgeReportSchema.safeParse({
       experience_id: 0,
       judged_at: deps.now?.() ?? Math.floor(Date.now() / 1000),
@@ -91,6 +92,10 @@ function extractToolInput(content: unknown[] | undefined): unknown {
   }) as { input?: unknown } | undefined;
   if (!toolUse) throw new Error("anthropic_judge_missing_tool_output");
   return toolUse.input;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function judgeReportTool() {

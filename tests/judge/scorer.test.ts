@@ -80,4 +80,17 @@ describe("anthropicJudgeScorer", () => {
       })
     ).rejects.toThrow(/anthropic_judge_invalid_report/);
   });
+
+  it("rejects non-object tool output as an invalid report", async () => {
+    const fetchImpl = vi.fn(async () =>
+      Response.json({ content: [{ type: "tool_use", name: "record_judge_report", input: null }] })
+    );
+
+    await expect(
+      anthropicJudgeScorer.score(bundle(), [], {
+        env: { ANTHROPIC_API_KEY: "test-key", ANTHROPIC_MODEL: "test-model" },
+        fetchImpl,
+      })
+    ).rejects.toThrow(/anthropic_judge_invalid_report/);
+  });
 });
