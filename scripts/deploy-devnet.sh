@@ -22,6 +22,9 @@ if [ -d "$HOME/.local/share/solana/install/releases/2.2.20/solana-release/bin" ]
   export PATH="$HOME/.local/share/solana/install/releases/2.2.20/solana-release/bin:$PATH"
 fi
 
+# Add local node_modules to PATH so Anchor can find prettier for IDL generation
+export PATH="$(pwd)/node_modules/.bin:$PATH"
+
 # --- 1. Build the on-chain program (.so + keypair) ---
 # `anchor build` silently no-ops in this repo layout because Anchor.toml lives
 # under programs/ (not at workspace root), so we invoke cargo-build-sbf directly.
@@ -61,6 +64,7 @@ EOF
 cp programs/Anchor.toml "$ANCHOR_WS/Anchor.toml"
 
 echo ">>> anchor idl build"
+mkdir -p "$ANCHOR_WS/target/idl" "$ANCHOR_WS/target/types"
 ( cd "$ANCHOR_WS" && anchor idl build -o target/idl/slp.json -t target/types/slp.ts )
 
 # --- 3. Copy IDL + types into lib/chain/ ---
