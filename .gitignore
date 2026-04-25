@@ -6,6 +6,7 @@ node_modules
 .next
 out
 next-env.d.ts
+tsconfig.tsbuildinfo
 
 # data (mock db is the reset button)
 data/
