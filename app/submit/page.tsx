@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
-import { api } from "@/lib/api-client";
 import { ExperienceBundleSchema } from "@/lib/schemas";
 import { LabeledBox } from "@/components/brutalist/LabeledBox";
 import { Btn } from "@/components/brutalist/Btn";
@@ -13,7 +12,7 @@ import { TxStatus } from "@/components/brutalist/TxStatus";
 import { getConnection } from "@/lib/chain/connection";
 import { getChainConfig } from "@/lib/chain/config";
 import { submitExperience as chainSubmit, getNextExperienceId } from "@/lib/chain/tx";
-import { signMessage } from "@/lib/wallet";
+import { uploadObject } from "@/lib/browser-irys";
 
 async function sha256Bytes(content: string): Promise<Uint8Array> {
   const buf = new TextEncoder().encode(content);
@@ -59,9 +58,10 @@ export default function SubmitPage() {
     setTxStatus("idle");
     setTxSig(undefined);
     try {
-      setSigning("Approve Irys upload");
-      const { signatureBase58: sig1 } = await signMessage(w, `SLP IRYS SUBMIT\ntrace: ${bundle.trace_id}\nt: ${Date.now()}`);
-      const upload = await api.uploadIrys(wallet, sig1, {
+      setSigning("Upload to Irys");
+      const upload = await uploadObject({
+        owner: wallet,
+        wallet: w,
         content: json,
         tags: [
           { name: "Protocol", value: "SLP" },

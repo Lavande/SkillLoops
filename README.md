@@ -72,3 +72,26 @@ ANTHROPIC_MODEL=claude-sonnet-4-5-20250929
 ```
 
 Lit decrypt remains mocked in this slice.
+
+## Slice 5 browser Lit + Irys opt-in
+
+Default local behavior still uses the API upload path and mock Lit envelope:
+
+```env
+NEXT_PUBLIC_STORAGE_MODE=api
+NEXT_PUBLIC_LIT_MODE=mock
+NEXT_PUBLIC_LIT_NETWORK=datil-dev
+```
+
+To test browser wallet-backed Irys uploads and Lit encryption/decryption:
+
+```env
+NEXT_PUBLIC_STORAGE_MODE=browser-irys
+NEXT_PUBLIC_LIT_MODE=real
+NEXT_PUBLIC_LIT_NETWORK=datil-dev
+```
+
+In real mode, `/publish` encrypts SKILL.md content before browser Irys upload,
+`/submit` uploads ExperienceBundle JSON through browser Irys, and `/skill/[id]`
+decrypts fetched skill content through Lit. `/console` intentionally remains on
+the deterministic mock/API path.

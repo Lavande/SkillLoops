@@ -15,6 +15,11 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1",
+    "@irys/web-upload": "^0.0.15",
+    "@irys/web-upload-solana": "^0.1.8",
+    "@lit-protocol/constants": "^9.0.1",
+    "@lit-protocol/encryption": "^7.4.0",
+    "@lit-protocol/lit-node-client": "^7.4.0",
     "@noble/hashes": "^2.2.0",
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/wallet-adapter-phantom": "^0.9.24",

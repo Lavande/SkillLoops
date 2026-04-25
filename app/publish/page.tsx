@@ -4,8 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { api } from "@/lib/api-client";
-import { signMessage } from "@/lib/wallet";
 import { LabeledBox } from "@/components/brutalist/LabeledBox";
 import { Btn } from "@/components/brutalist/Btn";
 import { PhantomSignPending } from "@/components/brutalist/PhantomSignPending";
@@ -13,6 +11,9 @@ import { TxStatus } from "@/components/brutalist/TxStatus";
 import { getConnection } from "@/lib/chain/connection";
 import { getChainConfig } from "@/lib/chain/config";
 import { publishSkill } from "@/lib/chain/tx";
+import { pdas } from "@/lib/chain/pdas";
+import { uploadObject } from "@/lib/browser-irys";
+import { encryptSkillContent } from "@/lib/lit/client";
 
 type TxState = "idle" | "signing" | "confirming" | "confirmed" | "error";
 
@@ -41,23 +42,33 @@ export default function PublishPage() {
     setTxSig(undefined);
 
     try {
-      setSigning("Approve Irys upload");
-      const { signatureBase58: sig1 } = await signMessage(
-        w,
-        `SLP IRYS PUBLISH\nname: ${form.name}\nt: ${Date.now()}`
-      );
-      const upload = await api.uploadIrys(wallet, sig1, {
-        content: form.content,
+      const { programId } = getChainConfig();
+      if (!w.publicKey) throw new Error("wallet_not_connected");
+      const [skillPda] = pdas.skill(programId, w.publicKey, form.name);
+
+      setSigning("Encrypt via Lit");
+      const encrypted = await encryptSkillContent({
+        plaintext: form.content,
+        skillId: skillPda.toBase58(),
+        author: wallet,
+        wallet: w,
+      });
+
+      setSigning("Upload to Irys");
+      const upload = await uploadObject({
+        owner: wallet,
+        wallet: w,
+        content: encrypted.content,
         tags: [
           { name: "Protocol", value: "SLP" },
           { name: "Type", value: "SkillContent" },
           { name: "Name", value: form.name },
+          { name: "Encrypted", value: encrypted.encrypted ? "true" : "false" },
         ],
       });
       setSigning(null);
 
       setTxStatus("signing");
-      const { programId } = getChainConfig();
       const result = await publishSkill(getConnection(), w as any, {
         programId,
         name: form.name,

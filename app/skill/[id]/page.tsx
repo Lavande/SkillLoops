@@ -5,7 +5,6 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { api } from "@/lib/api-client";
 import { fmtSol } from "@/lib/units";
-import { signMessage } from "@/lib/wallet";
 import { LabeledBox } from "@/components/brutalist/LabeledBox";
 import { Btn } from "@/components/brutalist/Btn";
 import { Chip } from "@/components/brutalist/Chip";
@@ -23,6 +22,7 @@ import { getChainConfig } from "@/lib/chain/config";
 import { subscribe as chainSubscribe, settlePeriod as chainSettle } from "@/lib/chain/tx";
 import { getProgram } from "@/lib/chain/program";
 import { pdas } from "@/lib/chain/pdas";
+import { decryptSkillContent } from "@/lib/lit/client";
 
 interface PageProps {
   params: { id: string };
@@ -117,10 +117,14 @@ export default function SkillPage({ params }: PageProps) {
     if (!wallet) return alert("Connect Phantom first");
     setSigning("Decrypt via Lit");
     try {
-      const { signatureBase58 } = await signMessage(w, `SLP DECRYPT\nskill: ${params.id}\nt: ${Date.now()}`);
       const arweave = await api.fetchIrys(data.skill.arweaveTxId);
-      const r = await api.litDecrypt(wallet, signatureBase58, { ciphertext: arweave.content, skillId: params.id });
-      setPreview(r.plaintext);
+      const plaintext = await decryptSkillContent({
+        content: arweave.content,
+        skillId: params.id,
+        wallet: w,
+        caller: wallet,
+      });
+      setPreview(plaintext);
     } catch (e: any) {
       setErr(e?.message ?? "decrypt failed");
     } finally {
