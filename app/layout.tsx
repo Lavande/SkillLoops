@@ -10,18 +10,21 @@ const display = Archivo_Narrow({
   weight: ["400", "500", "600", "700"],
   variable: "--font-display",
   display: "swap",
+  fallback: ["Arial Narrow", "Helvetica Neue", "Arial", "sans-serif"],
 });
 const mono = IBM_Plex_Mono({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   variable: "--font-mono",
   display: "swap",
+  fallback: ["SFMono-Regular", "Consolas", "Liberation Mono", "monospace"],
 });
 const serif = Fraunces({
   subsets: ["latin"],
   weight: ["300", "400", "500"],
   variable: "--font-serif",
   display: "swap",
+  fallback: ["Georgia", "Times New Roman", "serif"],
 });
 
 export const metadata: Metadata = {

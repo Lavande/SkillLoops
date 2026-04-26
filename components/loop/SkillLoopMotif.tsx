@@ -14,9 +14,16 @@ interface Props {
 
 const STAGES = ["USE", "REFLECT", "SUBMIT", "JUDGE", "EVOLVE"] as const;
 
+export function roundSvgNumber(value: number) {
+  return Number(value.toFixed(6));
+}
+
 function polar(cx: number, cy: number, r: number, deg: number) {
   const rad = (deg - 90) * (Math.PI / 180);
-  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  return {
+    x: roundSvgNumber(cx + r * Math.cos(rad)),
+    y: roundSvgNumber(cy + r * Math.sin(rad)),
+  };
 }
 
 function arcPath(cx: number, cy: number, r: number, startDeg: number, endDeg: number) {
@@ -33,15 +40,16 @@ export function SkillLoopMotif({ size = 340, spinTrigger = 0, active = null, cla
   const rOuter = size / 2 - 12;
   const rInner = rOuter - 18;
   const rLabel = rOuter + 18;
+  const circumference = roundSvgNumber(Math.PI * 2 * rOuter);
 
   useEffect(() => {
     if (spinTrigger === 0) return;
     animate(
       scope.current,
-      { strokeDashoffset: [Math.PI * 2 * rOuter, 0] },
+      { strokeDashoffset: [circumference, 0] },
       { duration: 1.6, ease: "easeInOut" }
     );
-  }, [spinTrigger, animate, rOuter, scope]);
+  }, [spinTrigger, animate, circumference, scope]);
 
   const stageAngles = STAGES.map((_, i) => (i * 360) / STAGES.length);
 
@@ -180,8 +188,8 @@ export function SkillLoopMotif({ size = 340, spinTrigger = 0, active = null, cla
         stroke="#FF5B1F"
         strokeWidth="2"
         strokeLinecap="round"
-        strokeDasharray={`${Math.PI * 2 * rOuter * 0.18} ${Math.PI * 2 * rOuter * 0.82}`}
-        strokeDashoffset={Math.PI * 2 * rOuter}
+        strokeDasharray={`${roundSvgNumber(circumference * 0.18)} ${roundSvgNumber(circumference * 0.82)}`}
+        strokeDashoffset={circumference}
         style={{ transformOrigin: "center" }}
       />
     </svg>
