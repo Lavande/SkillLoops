@@ -1,8 +1,17 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { ConnectButton } from "@/components/phantom/ConnectButton";
 
 export function SiteFrame({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  // The /demo deck takes over the viewport — render bare so the slides own the screen.
+  if (pathname?.startsWith("/demo")) {
+    return <>{children}</>;
+  }
+
   return (
     <div className="min-h-screen bp-grid-dots">
       <header className="border-b border-ink bg-paper/95 backdrop-blur">
