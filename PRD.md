@@ -906,18 +906,49 @@ Total runtime: just under 3 minutes.
 
 ## 9. Roadmap
 
+### Phase 1 — Decentralize Trust (P0)
+
+The MVP ships with a single trusted Judge key. Phase 1 removes that assumption entirely and closes the meta loop by hosting the Reflection Skill on the protocol itself.
+
 | Priority | Feature | Notes |
 |----------|---------|-------|
-| P0 | Multi-judge voting with stake and slash | removes single-key trust |
-| P0 | Regression test engine | uses the `test_case` field to automatically verify patches |
-| P0 | Host the Reflection Skill on SLP | closes the meta loop |
-| P1 | Kleros-style arbitration | for contested scores |
-| P1 | Secondary market for post-lock shares | liquidity for long-term contributors |
-| P1 | Native Phantom deep-link for agent-initiated signing | removes the manual paste step |
-| P2 | zkVM regression proofs | provable patch verification |
-| P2 | One-click merge of high-scoring patches | reduces author workload |
-| P2 | Cross-skill experience transfer | shared learnings between similar skills |
-| P3 | Fork mechanism | contributors can fork a skill if the author won't evolve it |
+| P0 | Multi-judge voting with stake and slash | Judges must stake SLP token; a bad vote triggers slashing. Score = stake-weighted median across the Judge network. Removes the single-key trust assumption. |
+| P0 | Judge DAO + governance token | On-chain DAO governs Judge admission, scoring weight parameters, and protocol upgrades. SLP token is the governance primitive — Judges stake it, contributors earn it alongside shares, the community votes with it. This is the mechanism that makes the protocol self-governing. |
+| P0 | Regression test engine | Uses the `test_case` field in each ExperienceBundle to automatically execute patches against a sandboxed agent, verifying that the proposed fix actually resolves the failure before shares are minted. |
+| P0 | Host the Reflection Skill on SLP | The Reflection Skill is published as a first-class SLP skill, governed and evolved through the same mechanism it teaches. Closes the meta loop: the skill that teaches other skills to improve, improves itself. |
+
+### Phase 2 — Deepen the Economy (P1)
+
+Phase 2 builds out the economic layer so that contributors, authors, and Judges each have rich, sustainable incentive structures.
+
+| Priority | Feature | Notes |
+|----------|---------|-------|
+| P1 | Kleros-style arbitration | Contributors who disagree with a Judge score can open a dispute. A panel of token-staking arbitrators reviews the case on-chain. Losing party forfeits a portion of their stake. |
+| P1 | Secondary market for post-lock shares | After the 6-month lock expires, ShareAccounts become transferable. Opens a price discovery market for skill equity and provides liquidity for long-term contributors. |
+| P1 | Native Phantom deep-link for agent-initiated signing | Removes the manual "paste JSON into the browser" step. The agent constructs the deep-link directly; Phantom opens, pre-filled, and the user approves in one tap. |
+| P1 | Agent-to-Agent economic layer | Agents become first-class economic actors: they hold wallets, autonomously subscribe to skills, submit ExperienceBundles, receive share revenue, and re-invest that revenue into further subscriptions — all without a human in the transaction path. This is the realization of the "fully AI-native economy" thesis: agent A detects a skill gap, submits a patch, earns a share, uses that share's revenue to subscribe to a better skill for its next task. The loop runs without human intervention. |
+
+### Phase 3 — Harden and Scale (P2)
+
+Phase 3 addresses the known technical limitations of the MVP architecture and raises the ceiling for protocol throughput.
+
+| Priority | Feature | Notes |
+|----------|---------|-------|
+| P2 | zkVM regression proofs | Patch verification moves on-chain: a zkVM proof attests that a proposed patch fixes the failure case described in the test, without revealing the full agent trace. Enables trustless verification without a centralized sandbox. |
+| P2 | One-click merge of high-scoring patches | Authors see a "Merge" button on contributions scored above a threshold. One click applies the patch to their SKILL.md draft, which they review and publish. Reduces author workload and accelerates the skill evolution cycle. |
+| P2 | Cross-skill experience transfer | A failure experience logged against Skill A can be surfaced to authors of semantically similar Skills B and C. Shared learnings reduce duplicated effort across the ecosystem. |
+| P2 | Merkle-based revenue distribution | Replaces the off-chain indexer snapshot with an on-chain Merkle tree. Any holder can claim their revenue with a Merkle proof, eliminating the trusted indexer and scaling to tens of thousands of shareholders per skill. |
+
+### Phase 4 — Expand the Ecosystem (P3)
+
+Phase 4 opens the protocol to the broader agent economy and sets the foundations for SLP to become infrastructure rather than a product.
+
+| Priority | Feature | Notes |
+|----------|---------|-------|
+| P3 | Fork mechanism | If an author stops evolving a skill, top contributors can fork it. The fork inherits the full contribution history and version lineage; the original author receives a royalty on the fork's revenue for a configurable period. |
+| P3 | Skill-as-IP on-chain licensing | Each skill version is minted as an NFT representing its IP. Forks, remixes, and white-label deployments trigger on-chain royalty flows to original authors and major contributors. |
+| P3 | Cross-chain skill market | Via Wormhole or LayerZero, agents on EVM chains can subscribe to SLP skills and submit experiences. SLP becomes chain-agnostic infrastructure for the broader agent economy. |
+| P3 | Universal Skill Standard | Formalize SKILL.md as an open specification — the OpenAPI of AI agent skills. Propose adoption to major agent frameworks (LangChain, Cursor, AutoGen). SLP becomes the canonical registry and evolution engine for the standard. |
 
 ---
 
