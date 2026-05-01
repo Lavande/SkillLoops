@@ -61,6 +61,19 @@ describe("PDA derivations", () => {
     expect(pdas.experience(PROGRAM, SKILL, 42n)[0].equals(expected)).toBe(true);
   });
 
+  it("experience derivation does not require Buffer writeBigUInt64LE at runtime", () => {
+    const idBuf = Buffer.alloc(8); idBuf.writeBigUInt64LE(42n, 0);
+    const [expected] = PublicKey.findProgramAddressSync(
+      [Buffer.from("exp"), SKILL.toBuffer(), idBuf], PROGRAM);
+    const original = Buffer.prototype.writeBigUInt64LE;
+    try {
+      (Buffer.prototype as any).writeBigUInt64LE = undefined;
+      expect(pdas.experience(PROGRAM, SKILL, 42n)[0].equals(expected)).toBe(true);
+    } finally {
+      Buffer.prototype.writeBigUInt64LE = original;
+    }
+  });
+
   it("claim uses [b'claim', skill, holder, snapshot_id u64 le]", () => {
     const snap = Buffer.alloc(8); snap.writeBigUInt64LE(7n, 0);
     const [expected] = PublicKey.findProgramAddressSync(

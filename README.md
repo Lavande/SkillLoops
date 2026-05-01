@@ -110,6 +110,7 @@ IRYS_GATEWAY_URL=https://gateway.irys.xyz
 IRYS_NETWORK=devnet
 
 JUDGE_BACKEND=anthropic
+JUDGE_DAEMON_AUTOSTART=true
 ANTHROPIC_API_KEY=<key>
 ANTHROPIC_MODEL=claude-sonnet-4-5-20250929
 ```
