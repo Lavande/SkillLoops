@@ -1,7 +1,19 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { PublicKey } from "@solana/web3.js";
 import { _resetSingletonForTesting, getDb } from "@/lib/db";
-import { applyEventForTest } from "@/lib/indexer";
+import { applyEventForTest, enrichAfterCommitForTest } from "@/lib/indexer";
+
+const programMock = vi.hoisted(() => ({
+  experienceFetch: vi.fn(),
+}));
+
+vi.mock("@/lib/chain/program", () => ({
+  getProgram: () => ({
+    account: {
+      experienceRecord: { fetch: programMock.experienceFetch },
+    },
+  }),
+}));
 
 const SKILL = new PublicKey("11111111111111111111111111111114");
 const AUTHOR = new PublicKey("11111111111111111111111111111115");
@@ -73,10 +85,64 @@ describe("applyEvent projections (shape-only, no RPC fetch)", () => {
       name: "ExperienceEvaluated",
       data: { skill: SKILL, experienceId: 0, score: 38, sharesMinted: 380, approved: true, floorHit: false },
     }, "sig5", 5, true);
-    const exp2 = db.prepare(`SELECT status, contribution_score FROM experiences WHERE skill_id = ? AND experience_id = ?`)
+    const exp2 = db.prepare(`SELECT status, contribution_score, shares_minted FROM experiences WHERE skill_id = ? AND experience_id = ?`)
       .get(SKILL.toBase58(), 0) as any;
     expect(exp2.status).toBe("Evaluated");
     expect(exp2.contribution_score).toBe(38);
+    expect(exp2.shares_minted).toBe(380);
+  });
+
+  it("ExperienceSubmitted enrichment backfills bundle pointer fields from the on-chain account", async () => {
+    const db = getDb(":memory:");
+    const ev = {
+      name: "ExperienceSubmitted" as const,
+      data: { skill: SKILL, experienceId: 0, contributor: BOB },
+    };
+    await applyEventForTest(db, ev, "sig4b", 4, true);
+    programMock.experienceFetch.mockResolvedValueOnce({
+      skillVersion: 2,
+      contentHash: Uint8Array.from({ length: 32 }, (_v, i) => i),
+      arweaveTxId: "irys_bundle_tx",
+      submittedAt: { toString: () => "1234" },
+    });
+    process.env.NEXT_PUBLIC_SLP_PROGRAM_ID = "5uTb4ZPTVB1HFMdTeBXELPzgaX2dcVRZoxPQW2SNzQAH";
+
+    await enrichAfterCommitForTest({} as any, db, ev);
+
+    const exp = db.prepare(`SELECT skill_version, content_hash, arweave_tx_id, submitted_at FROM experiences WHERE skill_id = ? AND experience_id = ?`)
+      .get(SKILL.toBase58(), 0) as any;
+    expect(exp.skill_version).toBe(2);
+    expect(exp.content_hash).toBe("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+    expect(exp.arweave_tx_id).toBe("irys_bundle_tx");
+    expect(exp.submitted_at).toBe(1234);
+  });
+
+  it("ExperienceEvaluated enrichment backfills judge report fields from the on-chain account", async () => {
+    const db = getDb(":memory:");
+    const submitted = {
+      name: "ExperienceSubmitted" as const,
+      data: { skill: SKILL, experienceId: 0, contributor: BOB },
+    };
+    await applyEventForTest(db, submitted, "sig4c", 4, true);
+    const evaluated = {
+      name: "ExperienceEvaluated" as const,
+      data: { skill: SKILL, experienceId: 0, score: 42, sharesMinted: 420, approved: true, floorHit: false },
+    };
+    await applyEventForTest(db, evaluated, "sig5c", 5, true);
+    programMock.experienceFetch.mockResolvedValueOnce({
+      sharesMinted: { toString: () => "420" },
+      evaluatedAt: { toString: () => "5678" },
+      judgeReportTxId: "irys_judge_report_tx",
+    });
+    process.env.NEXT_PUBLIC_SLP_PROGRAM_ID = "5uTb4ZPTVB1HFMdTeBXELPzgaX2dcVRZoxPQW2SNzQAH";
+
+    await enrichAfterCommitForTest({} as any, db, evaluated);
+
+    const exp = db.prepare(`SELECT shares_minted, evaluated_at, judge_report_tx_id FROM experiences WHERE skill_id = ? AND experience_id = ?`)
+      .get(SKILL.toBase58(), 0) as any;
+    expect(exp.shares_minted).toBe(420);
+    expect(exp.evaluated_at).toBe(5678);
+    expect(exp.judge_report_tx_id).toBe("irys_judge_report_tx");
   });
 
   it("PeriodSettled inserts revenue_history + advances pool", async () => {

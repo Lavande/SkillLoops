@@ -4,6 +4,7 @@ import {
 } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
 import { sha256 } from "@noble/hashes/sha2.js";
+import bs58 from "bs58";
 import { getProgram, type Signer } from "./program";
 import { pdas } from "./pdas";
 import { parseChainError } from "./errors";
@@ -29,11 +30,17 @@ export async function sendAndIndex(
   } catch (e) {
     throw parseChainError(e);
   }
+  const signedSig = signed.signature ? bs58.encode(signed.signature) : null;
   let sig: string;
   try {
     sig = await connection.sendRawTransaction(signed.serialize(), { skipPreflight: false });
   } catch (e) {
-    throw parseChainError(e);
+    const msg = (e as any)?.message ?? String(e);
+    if (signedSig && /already been processed/i.test(msg)) {
+      sig = signedSig;
+    } else {
+      throw parseChainError(e);
+    }
   }
   try {
     await connection.confirmTransaction(

@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db";
 import { getConnection } from "./chain/connection";
 import { getChainConfig } from "./chain/config";
 import { decodeEvents, type SlpEvent } from "./chain/events";
+import { pdas } from "./chain/pdas";
 import { now } from "@/lib/mock/clock";
 
 interface IndexerState { running: boolean; lastTick: number }
@@ -109,6 +110,11 @@ export async function applyEventForTest(
   applyEventLocal(db, ev);
 }
 
+// Exported for testing only — exercises post-commit RPC enrichment.
+export async function enrichAfterCommitForTest(conn: Connection, db: DB, ev: SlpEvent): Promise<void> {
+  await enrichAfterCommit(conn, db, ev);
+}
+
 function applyEventLocal(db: DB, ev: SlpEvent): void {
   const t = now();
   switch (ev.name) {
@@ -172,9 +178,10 @@ function applyEventLocal(db: DB, ev: SlpEvent): void {
       const skillId = (ev.data.skill as PublicKey).toBase58();
       const experienceId = Number(ev.data.experienceId);
       const score = Number(ev.data.score);
+      const sharesMinted = Number(ev.data.sharesMinted);
       const approved = Boolean(ev.data.approved);
-      db.prepare(`UPDATE experiences SET status = ?, contribution_score = ?, evaluated_at = ? WHERE skill_id = ? AND experience_id = ?`)
-        .run(approved ? "Evaluated" : "Rejected", score, t, skillId, experienceId);
+      db.prepare(`UPDATE experiences SET status = ?, contribution_score = ?, shares_minted = ?, evaluated_at = ? WHERE skill_id = ? AND experience_id = ?`)
+        .run(approved ? "Evaluated" : "Rejected", score, sharesMinted, t, skillId, experienceId);
       return;
     }
     case "SharesMinted": {
@@ -256,6 +263,49 @@ async function enrichAfterCommit(conn: Connection, db: DB, ev: SlpEvent): Promis
              Number(acct.subscriptionPrice.toString()), acct.minAuthorRatioBps,
              skillPk.toBase58());
     } catch (e) { console.error("[indexer] enrich skill failed", e); }
+  }
+  if (ev.name === "ExperienceSubmitted") {
+    const skillPk = ev.data.skill as PublicKey;
+    const experienceId = BigInt(ev.data.experienceId.toString());
+    const [experiencePk] = pdas.experience(getChainConfig().programId, skillPk, experienceId);
+    try {
+      const acct = await (program.account as any).experienceRecord.fetch(experiencePk);
+      const submittedAt = Number(acct.submittedAt?.toString?.() ?? acct.submittedAt);
+      db.prepare(`UPDATE experiences SET
+          skill_version = ?,
+          content_hash = ?,
+          arweave_tx_id = ?,
+          submitted_at = ?
+          WHERE skill_id = ? AND experience_id = ?`)
+        .run(
+          Number(acct.skillVersion?.toString?.() ?? acct.skillVersion),
+          Buffer.from(acct.contentHash).toString("hex"),
+          acct.arweaveTxId,
+          submittedAt,
+          skillPk.toBase58(),
+          Number(experienceId),
+        );
+    } catch (e) { console.error("[indexer] enrich experience failed", e); }
+  }
+  if (ev.name === "ExperienceEvaluated") {
+    const skillPk = ev.data.skill as PublicKey;
+    const experienceId = BigInt(ev.data.experienceId.toString());
+    const [experiencePk] = pdas.experience(getChainConfig().programId, skillPk, experienceId);
+    try {
+      const acct = await (program.account as any).experienceRecord.fetch(experiencePk);
+      db.prepare(`UPDATE experiences SET
+          shares_minted = ?,
+          evaluated_at = ?,
+          judge_report_tx_id = ?
+          WHERE skill_id = ? AND experience_id = ?`)
+        .run(
+          Number(acct.sharesMinted?.toString?.() ?? acct.sharesMinted),
+          Number(acct.evaluatedAt?.toString?.() ?? acct.evaluatedAt),
+          acct.judgeReportTxId,
+          skillPk.toBase58(),
+          Number(experienceId),
+        );
+    } catch (e) { console.error("[indexer] enrich evaluated experience failed", e); }
   }
   if (ev.name === "PeriodSettled") {
     const skillPk = ev.data.skill as PublicKey;
