@@ -298,7 +298,10 @@ pub struct ClaimableRevenue {
 ```json
 {
   "version": "1.0",
-  "skill_id": "pubkey_base58",
+  "target_skill": {
+    "name": "GitHub PR Review",
+    "version": 1
+  },
   "skill_version": 1,
   "trace_id": "uuid",
   "submitted_at": 1714000000,
@@ -476,7 +479,7 @@ earn you shares in the target skill.
 ## Steps
 ### 1. Gather context
 From the conversation history, extract:
-- target skill id and version
+- target skill name and version
 - the original task
 - the full action/observation trajectory
 - the final outcome
@@ -536,10 +539,11 @@ The `/submit` page is where the experience becomes a transaction.
 
 **Flow**:
 
-1. User pastes the ExperienceBundle JSON.
+1. User selects the target skill or pastes the ExperienceBundle JSON first.
 2. Frontend validates:
    - schema compliance,
-   - `skill_id` corresponds to an active Subscription owned by the connected wallet,
+   - `target_skill.name` resolves to one or more known skills,
+   - the user confirms the canonical skill record selected from the database,
    - `submitted_by` equivalent (the connected wallet) makes sense.
 3. User clicks Submit.
 4. **Phantom popup 1** — Irys signature for upload. JSON uploads to Arweave (free, < 100 KB). Returns `arweave_tx_id`.

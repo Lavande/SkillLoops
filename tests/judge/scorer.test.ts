@@ -5,7 +5,7 @@ import type { ExperienceBundle } from "@/lib/schemas";
 function bundle(over: Partial<ExperienceBundle> = {}): ExperienceBundle {
   return {
     version: "1.0",
-    skill_id: "skill_demo",
+    target_skill: { name: "Demo Skill", version: 1 },
     skill_version: 1,
     trace_id: "generic-1",
     submitted_at: 1_700_000_000,

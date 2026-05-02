@@ -16,6 +16,7 @@ vi.mock("@/lib/chain/program", () => ({
 }));
 
 const SKILL = new PublicKey("11111111111111111111111111111114");
+const OTHER_SKILL = new PublicKey("11111111111111111111111111111117");
 const AUTHOR = new PublicKey("11111111111111111111111111111115");
 const BOB = new PublicKey("11111111111111111111111111111116");
 
@@ -90,6 +91,26 @@ describe("applyEvent projections (shape-only, no RPC fetch)", () => {
     expect(exp2.status).toBe("Evaluated");
     expect(exp2.contribution_score).toBe(38);
     expect(exp2.shares_minted).toBe(380);
+  });
+
+  it("allows the same chain experience id under different skills", async () => {
+    const db = getDb(":memory:");
+
+    await applyEventForTest(db, {
+      name: "ExperienceSubmitted",
+      data: { skill: SKILL, experienceId: 0, contributor: BOB },
+    }, "sig4-skill-a", 4, true);
+    await applyEventForTest(db, {
+      name: "ExperienceSubmitted",
+      data: { skill: OTHER_SKILL, experienceId: 0, contributor: BOB },
+    }, "sig4-skill-b", 5, true);
+
+    const rows = db.prepare(`SELECT skill_id, experience_id FROM experiences WHERE experience_id = 0`).all() as any[];
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => r.skill_id).sort()).toEqual([
+      OTHER_SKILL.toBase58(),
+      SKILL.toBase58(),
+    ].sort());
   });
 
   it("ExperienceSubmitted enrichment backfills bundle pointer fields from the on-chain account", async () => {

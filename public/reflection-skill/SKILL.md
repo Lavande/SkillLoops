@@ -27,7 +27,7 @@ contributions earn the contributor shares in the target skill.
 
 ### 1. Gather context
 From conversation history, extract:
-- target skill id (on-chain pubkey or `skill_...` mock id) and version
+- target skill name and version
 - the original task
 - the full action / observation trajectory
 - the final outcome
@@ -67,7 +67,10 @@ Output the ExperienceBundle JSON below, then tell the user:
 ```json
 {
   "version": "1.0",
-  "skill_id": "<pubkey>",
+  "target_skill": {
+    "name": "<skill name>",
+    "version": 1
+  },
   "skill_version": 1,
   "trace_id": "<uuid>",
   "submitted_at": 1714000000,

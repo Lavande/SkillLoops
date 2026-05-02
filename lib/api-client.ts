@@ -26,6 +26,11 @@ export const api = {
     return request<any[]>(`/api/skills?${qs.toString()}`);
   },
   skill: (id: string, wallet: string | null) => request<any>(`/api/skills/${id}`, {}, { wallet }),
+  resolveSkill: (body: { name: string; version?: number }) =>
+    request<any>(`/api/skills/resolve`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   experience: (id: number, wallet: string | null) => request<any>(`/api/experiences/${id}`, {}, { wallet }),
   me: (wallet: string) => request<any>(`/api/me`, {}, { wallet }),
   seed: () => request<any>(`/api/seed`, { method: "POST" }),

@@ -217,7 +217,8 @@ export default function ConsolePage() {
       const signer = requireSigner(persona);
       const skillId = await loadAliceSkillId();
       const skillPk = new PublicKey(skillId);
-      const bundle = buildConsoleDemoBundle(skillId, 1);
+      const targetName = skillData?.skill?.name ?? "GitHub PR Review";
+      const bundle = buildConsoleDemoBundle(targetName, 1);
       const json = JSON.stringify(bundle);
 
       // Upload to mock Irys (returns deterministic txId).
@@ -323,7 +324,8 @@ export default function ConsolePage() {
       const baseContent = skillData?.skill?.name
         ? `# ${skillData.skill.name}\n\n${skillData.skill.description}\n\nStep 1: Load inputs.\nStep 2: Check for common smells.\nStep 3: Produce review.`
         : "# v1\nbase";
-      const patch = buildConsoleDemoBundle(skillId, currentVersion).proposed_patch.diff;
+      const targetName = skillData?.skill?.name ?? "GitHub PR Review";
+      const patch = buildConsoleDemoBundle(targetName, currentVersion).proposed_patch.diff;
       const v2Content = `${baseContent}\n\n## v1.1 patch (Bob)\n${patch}\n`;
       const upload = await api.uploadIrys(signer.publicKey.toBase58(), "demo-mode-no-sig", {
         content: v2Content,

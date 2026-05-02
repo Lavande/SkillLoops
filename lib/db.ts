@@ -87,7 +87,7 @@ function migrate(db: DB) {
       PRIMARY KEY (holder, skill_id)
     );
     CREATE TABLE IF NOT EXISTS experiences (
-      experience_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      experience_id INTEGER NOT NULL,
       skill_id TEXT NOT NULL,
       contributor TEXT NOT NULL,
       skill_version INTEGER NOT NULL,
@@ -100,7 +100,8 @@ function migrate(db: DB) {
       submitted_at INTEGER NOT NULL,
       evaluated_at INTEGER,
       judge_report_tx_id TEXT,
-      judge_report_json TEXT
+      judge_report_json TEXT,
+      PRIMARY KEY (skill_id, experience_id)
     );
     CREATE TABLE IF NOT EXISTS revenue_pools (
       skill_id TEXT PRIMARY KEY,
@@ -150,5 +151,66 @@ function migrate(db: DB) {
       error_code TEXT,
       processed_at INTEGER NOT NULL
     );
+  `);
+  migrateExperiencesCompositeKey(db);
+}
+
+function migrateExperiencesCompositeKey(db: DB) {
+  const columns = db.prepare(`PRAGMA table_info(experiences)`).all() as { name: string; pk: number }[];
+  const pk = columns.filter((c) => c.pk > 0).sort((a, b) => a.pk - b.pk).map((c) => c.name);
+  if (pk.length !== 1 || pk[0] !== "experience_id") return;
+
+  db.exec(`
+    ALTER TABLE experiences RENAME TO experiences_old_global_pk;
+    CREATE TABLE experiences (
+      experience_id INTEGER NOT NULL,
+      skill_id TEXT NOT NULL,
+      contributor TEXT NOT NULL,
+      skill_version INTEGER NOT NULL,
+      content_hash TEXT NOT NULL,
+      arweave_tx_id TEXT NOT NULL,
+      bundle_json TEXT NOT NULL,
+      status TEXT NOT NULL,
+      contribution_score INTEGER,
+      shares_minted INTEGER,
+      submitted_at INTEGER NOT NULL,
+      evaluated_at INTEGER,
+      judge_report_tx_id TEXT,
+      judge_report_json TEXT,
+      PRIMARY KEY (skill_id, experience_id)
+    );
+    INSERT OR IGNORE INTO experiences (
+      experience_id,
+      skill_id,
+      contributor,
+      skill_version,
+      content_hash,
+      arweave_tx_id,
+      bundle_json,
+      status,
+      contribution_score,
+      shares_minted,
+      submitted_at,
+      evaluated_at,
+      judge_report_tx_id,
+      judge_report_json
+    )
+    SELECT
+      experience_id,
+      skill_id,
+      contributor,
+      skill_version,
+      content_hash,
+      arweave_tx_id,
+      bundle_json,
+      status,
+      contribution_score,
+      shares_minted,
+      submitted_at,
+      evaluated_at,
+      judge_report_tx_id,
+      judge_report_json
+    FROM experiences_old_global_pk;
+    DROP TABLE experiences_old_global_pk;
   `);
 }

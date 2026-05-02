@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { api } from "@/lib/api-client";
@@ -173,6 +174,9 @@ export default function SkillPage({ params }: PageProps) {
               ) : callerInfo.isSubscriber ? (
                 <Btn variant="ghost" onClick={onPreview}>Decrypt · preview</Btn>
               ) : null}
+              <Link href={`/submit?skill_id=${skill.skillId}`}>
+                <Btn variant="ink">Submit experience</Btn>
+              </Link>
             </div>
             <TxStatus status={txStatus} sig={txSig} cluster={getChainConfig().cluster} error={err ?? undefined} />
           </div>

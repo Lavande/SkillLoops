@@ -38,7 +38,9 @@ export async function tick(opts: { sig?: string } = {}): Promise<{ processed: nu
     if (isAlreadyIndexed(db, opts.sig)) return { processed: 0 };
     const tx = await conn.getTransaction(opts.sig, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
     if (!tx) return { processed: 0 };
-    await processOne(conn, db, opts.sig, tx.slot, tx.meta?.logMessages ?? []);
+    const logs = tx.meta?.logMessages;
+    if (!logs?.length) return { processed: 0 };
+    await processOne(conn, db, opts.sig, tx.slot, logs);
     processed += 1;
     state.lastTick = now();
     return { processed };
@@ -51,7 +53,9 @@ export async function tick(opts: { sig?: string } = {}): Promise<{ processed: nu
     if (isAlreadyIndexed(db, s.signature)) continue;
     const tx = await conn.getTransaction(s.signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
     if (!tx) continue;
-    await processOne(conn, db, s.signature, s.slot, tx.meta?.logMessages ?? []);
+    const logs = tx.meta?.logMessages;
+    if (!logs?.length) continue;
+    await processOne(conn, db, s.signature, s.slot, logs);
     setLastSeenSig(db, s.signature, s.slot);
     processed += 1;
   }

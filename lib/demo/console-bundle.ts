@@ -2,13 +2,16 @@ import { DEMO_RUST_UNSAFE_TRACE_ID } from "@/lib/mock/judge";
 import type { ExperienceBundle } from "@/lib/schemas";
 
 export function buildConsoleDemoBundle(
-  skillId: string,
+  targetSkillName: string,
   skillVersion = 1,
   submittedAt = 1_774_000_000,
 ): ExperienceBundle {
   return {
     version: "1.0",
-    skill_id: skillId,
+    target_skill: {
+      name: targetSkillName,
+      version: skillVersion,
+    },
     skill_version: skillVersion,
     trace_id: DEMO_RUST_UNSAFE_TRACE_ID,
     submitted_at: submittedAt,

@@ -26,9 +26,14 @@ export const TestCaseSchema = z
     message: "test_case must include an input or expected field",
   });
 
+export const TargetSkillSchema = z.object({
+  name: z.string().min(1),
+  version: z.number().int().positive().optional(),
+});
+
 export const ExperienceBundleSchema = z.object({
   version: z.string(),
-  skill_id: z.string(),
+  target_skill: TargetSkillSchema,
   skill_version: z.number().int().positive(),
   trace_id: z.string(),
   submitted_at: z.number().int().positive(),
