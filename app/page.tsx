@@ -9,8 +9,8 @@ export default function Home() {
     <div className="grid grid-cols-12 gap-6">
       {/* ───────────────── HERO ───────────────── */}
       <header className="col-span-12 pt-10 pb-8 border-b border-ink">
-        <div className="flex items-center justify-between gap-6 mb-8">
-          <div className="caption flex items-center gap-3">
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+          <div className="caption flex flex-wrap items-center gap-2 sm:gap-3">
             <span>PROTOCOL SPEC / HACKATHON MVP</span>
             <span className="text-ink/30">·</span>
             <span>SOLANA · DEVNET</span>
@@ -47,7 +47,7 @@ export default function Home() {
         </div>
 
         {/* spec strip */}
-        <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-0 border border-ink bg-paper-raised">
+        <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-0 border border-ink bg-paper-raised">
           {SPEC_STRIP.map((s, i) => (
             <div
               key={s.label}
@@ -89,7 +89,7 @@ export default function Home() {
       {/* ───────────────── CENTERPIECE ───────────────── */}
       <section className="col-span-12 border border-ink bp-grid mt-4">
         <div className="grid grid-cols-12 gap-0 items-stretch">
-          <div className="col-span-12 md:col-span-5 p-8 border-b md:border-b-0 md:border-r border-ink bg-paper">
+          <div className="col-span-12 border-b border-ink bg-paper p-5 sm:p-8 md:col-span-5 md:border-b-0 md:border-r">
             <div className="caption">SPEC / CENTERPIECE</div>
             <h2 className="font-display text-display-2 mt-2 uppercase leading-[1]">A fully AI-native economy.</h2>
             <p className="font-serif text-lg mt-4 leading-[1.4]">
@@ -104,7 +104,7 @@ export default function Home() {
               <li>→ CONTRACT mints contribution shares</li>
               <li>→ POOL settles revenue to all holders</li>
             </ul>
-            <div className="mt-7 flex items-center gap-4">
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
               <Link href="/console" className="accent-underline font-mono text-[11px] uppercase tracking-[0.2em]">
                 See the live demo console →
               </Link>
@@ -113,7 +113,7 @@ export default function Home() {
               </Link>
             </div>
           </div>
-          <div className="col-span-12 md:col-span-7 bg-paper-raised p-6 flex items-center justify-center">
+          <div className="col-span-12 flex items-center justify-center bg-paper-raised p-4 sm:p-6 md:col-span-7">
             <SkillLoopMotif size={420} active="REFLECT" />
           </div>
         </div>
@@ -131,7 +131,7 @@ export default function Home() {
 
         <div className="border border-ink bg-paper">
           <div className="grid grid-cols-12 border-b border-ink">
-            <div className="col-span-12 md:col-span-3 p-5 border-r-0 md:border-r border-ink bg-paper-raised">
+            <div className="col-span-12 border-b border-ink bg-paper-raised p-5 md:col-span-3 md:border-b-0 md:border-r">
               <div className="caption">ACTORS</div>
               <ul className="mt-3 space-y-3 font-mono text-[12px]">
                 <li className="flex items-center justify-between gap-3">
@@ -194,10 +194,10 @@ export default function Home() {
         <LabeledBox title="ON-CHAIN" code="anchor / 5 programs" className="col-span-12 md:col-span-7">
           <ul className="font-mono text-[11px] divide-y divide-ink/15">
             {PROGRAMS.map((p) => (
-              <li key={p.name} className="grid grid-cols-12 gap-3 py-2 first:pt-0 last:pb-0">
-                <span className="col-span-4 font-display uppercase tracking-[0.06em]">{p.name}</span>
-                <span className="col-span-7 text-ink/75 leading-[1.5]">{p.desc}</span>
-                <span className="col-span-1 text-right text-muted">{p.tag}</span>
+              <li key={p.name} className="grid grid-cols-1 gap-1 py-2 first:pt-0 last:pb-0 sm:grid-cols-12 sm:gap-3">
+                <span className="font-display uppercase tracking-[0.06em] sm:col-span-4">{p.name}</span>
+                <span className="text-ink/75 leading-[1.5] sm:col-span-7">{p.desc}</span>
+                <span className="text-muted sm:col-span-1 sm:text-right">{p.tag}</span>
               </li>
             ))}
           </ul>

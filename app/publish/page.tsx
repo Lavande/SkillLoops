@@ -107,14 +107,14 @@ export default function PublishPage() {
 
       <form className="col-span-12 lg:col-span-8 flex flex-col gap-4" onSubmit={onSubmit}>
         <LabeledBox title="METADATA" code="§ 1">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Name" hint="max 64 chars">
               <input className="plate w-full" required minLength={2} maxLength={64} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </Field>
             <Field label="Category" hint="free text, displayed as chip">
               <input className="plate w-full" required value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
             </Field>
-            <Field label="Description" hint="max 256 chars" className="col-span-2">
+            <Field label="Description" hint="max 256 chars" className="sm:col-span-2">
               <textarea className="plate w-full" rows={3} required minLength={2} maxLength={256} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
             </Field>
           </div>
@@ -127,7 +127,7 @@ export default function PublishPage() {
           />
         </LabeledBox>
         <LabeledBox title="ECONOMICS" code="§ 3">
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <Field label="Subscription price (SOL / 30d)" hint="recommend 0.01 – 0.5 SOL">
               <input
                 type="number"
@@ -155,7 +155,7 @@ export default function PublishPage() {
         {err ? <div className="plate text-accent">error: {err}</div> : null}
         <TxStatus status={txStatus} sig={txSig} cluster={cluster} error={err ?? undefined} />
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <Btn variant="primary" type="submit" disabled={!wallet}>
             {wallet ? "Sign & publish" : "Connect wallet to publish"}
           </Btn>

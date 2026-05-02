@@ -18,6 +18,11 @@ export function roundSvgNumber(value: number) {
   return Number(value.toFixed(6));
 }
 
+export function getStageLabelRadius(size: number, dense: boolean) {
+  const rOuter = size / 2 - 12;
+  return dense ? rOuter + 18 : rOuter - 22;
+}
+
 function polar(cx: number, cy: number, r: number, deg: number) {
   const rad = (deg - 90) * (Math.PI / 180);
   return {
@@ -39,7 +44,7 @@ export function SkillLoopMotif({ size = 340, spinTrigger = 0, active = null, cla
   const cy = size / 2;
   const rOuter = size / 2 - 12;
   const rInner = rOuter - 18;
-  const rLabel = rOuter + 18;
+  const rLabel = getStageLabelRadius(size, dense);
   const circumference = roundSvgNumber(Math.PI * 2 * rOuter);
 
   useEffect(() => {
@@ -58,7 +63,7 @@ export function SkillLoopMotif({ size = 340, spinTrigger = 0, active = null, cla
       viewBox={`0 0 ${size} ${size}`}
       width={size}
       height={size}
-      className={cn("text-ink", className)}
+      className={cn("h-auto max-w-full text-ink", className)}
       aria-label="Skill Loop diagram"
     >
       {/* background grid */}

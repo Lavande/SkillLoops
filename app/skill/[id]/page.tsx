@@ -150,15 +150,15 @@ export default function SkillPage({ params }: PageProps) {
       {/* Header band */}
       <section className="col-span-12 border border-ink bg-paper-raised">
         <div className="grid grid-cols-12 items-stretch">
-          <div className="col-span-12 lg:col-span-8 p-6">
-            <div className="flex items-center gap-3 mb-3">
+          <div className="col-span-12 p-4 sm:p-6 lg:col-span-8">
+            <div className="mb-3 flex flex-wrap items-center gap-2 sm:gap-3">
               <Chip tone="ghost">{skill.category}</Chip>
               <Chip tone="muted">v{skill.currentVersion}</Chip>
               {accessChip}
             </div>
             <h1 className="font-display text-display-2 uppercase leading-[1]">{skill.name}</h1>
             <p className="font-serif text-lg mt-3 leading-[1.35] max-w-2xl">{skill.description}</p>
-            <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 sm:gap-4">
               <DataPlate label="subscription" value={fmtSol(skill.subscriptionPrice, 3) + " / 30d"} />
               <DataPlate label="subscribers" value={skill.subscriberCount.toString()} />
               <DataPlate label="holders" value={(ledger.contributorCount + 1).toString()} />
@@ -189,7 +189,7 @@ export default function SkillPage({ params }: PageProps) {
 
       {/* Revenue panel */}
       <LabeledBox title="REVENUE POOL" code="§ distribute" className="col-span-12 lg:col-span-7">
-        <div className="grid grid-cols-3 gap-4 mb-4">
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
           <DataPlate label="current period" value={fmtSol(pool.currentPeriodRevenue, 4)} />
           <DataPlate label="lifetime" value={fmtSol(pool.totalLifetimeRevenue, 4)} />
           <DataPlate label="period length" value={`${pool.periodLength}s`} />
@@ -197,7 +197,7 @@ export default function SkillPage({ params }: PageProps) {
         <div className="mb-4">
           <PeriodCountdown startUnix={pool.currentPeriodStart} periodLength={pool.periodLength} />
         </div>
-        <div className="flex items-center gap-3 mb-4">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
           <Btn variant="ink" onClick={onSettle}>Settle period</Btn>
           <span className="caption">period must elapse before settle succeeds</span>
         </div>
@@ -213,11 +213,11 @@ export default function SkillPage({ params }: PageProps) {
         <ul className="flex flex-col gap-3">
           {versions.map((v: any) => (
             <li key={v.version} className="border border-ink/30 p-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-display uppercase text-lg">v{v.version}</span>
                 <span className="caption">{new Date(v.publishedAt * 1000).toLocaleString()}</span>
               </div>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="mt-1 flex flex-wrap items-center gap-2">
                 <MonoId value={v.arweaveTxId} prefix="ar" />
                 <span className="caption">{v.contributingExperienceIds.length} contributor(s)</span>
               </div>
@@ -244,12 +244,12 @@ export default function SkillPage({ params }: PageProps) {
       {/* Preview modal */}
       {preview ? (
         <div className="fixed inset-0 z-40 bg-paper/80 backdrop-blur-sm flex items-center justify-center p-6" onClick={() => setPreview(null)}>
-          <div className="corner-box border border-ink bg-paper max-w-3xl w-full max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="corner-box max-h-[80vh] w-full max-w-3xl overflow-auto border border-ink bg-paper" onClick={(e) => e.stopPropagation()}>
             <header className="flex items-center justify-between px-4 py-2 border-b border-ink">
               <span className="caption">SKILL.md · DECRYPTED</span>
               <button className="caption hover:text-accent" onClick={() => setPreview(null)}>close</button>
             </header>
-            <pre className="p-4 font-mono text-xs whitespace-pre-wrap leading-5">{preview.slice(0, 5000)}</pre>
+            <pre className="whitespace-pre-wrap break-words p-4 font-mono text-xs leading-5">{preview.slice(0, 5000)}</pre>
           </div>
         </div>
       ) : null}
@@ -264,15 +264,15 @@ function ExperienceRow({ exp }: { exp: any }) {
   const tone = exp.status === "Evaluated" ? "accent" : exp.status === "Pending" ? "muted" : "ghost";
   return (
     <div>
-      <button className="w-full flex items-center justify-between px-2 py-3 hover:bg-paper-raised" onClick={() => setOpen((o) => !o)}>
-        <div className="flex items-center gap-3">
+      <button className="flex w-full flex-col gap-2 px-2 py-3 text-left hover:bg-paper-raised sm:flex-row sm:items-center sm:justify-between" onClick={() => setOpen((o) => !o)}>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <span className="font-mono text-[11px] text-muted w-8">#{exp.experienceId}</span>
           <MonoId value={exp.contributor} prefix="by" />
           <Chip tone={tone}>{exp.status}</Chip>
           {exp.contributionScore ? <Chip tone="ink">{exp.contributionScore} / 50</Chip> : null}
           {exp.sharesMinted ? <span className="font-mono text-[11px] text-accent">+{exp.sharesMinted} shares</span> : null}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 self-start sm:self-auto">
           <span className="caption">{new Date(exp.submittedAt * 1000).toLocaleTimeString()}</span>
           <span className="caption">{open ? "—" : "+"}</span>
         </div>
@@ -280,7 +280,7 @@ function ExperienceRow({ exp }: { exp: any }) {
       {open ? (
         <div className="bg-paper-raised px-4 py-3 border-t border-ink/20">
           {exp.bundle ? (
-            <pre className="font-mono text-[11px] whitespace-pre-wrap leading-5 max-h-[360px] overflow-auto">
+            <pre className="max-h-[360px] overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-5">
 {JSON.stringify(exp.bundle, null, 2)}
             </pre>
           ) : (
@@ -291,7 +291,7 @@ function ExperienceRow({ exp }: { exp: any }) {
           {exp.judgeReport ? (
             <div className="mt-4">
               <div className="caption mb-1">JUDGE REPORT</div>
-              <pre className="font-mono text-[11px] whitespace-pre-wrap leading-5 max-h-[280px] overflow-auto">
+              <pre className="max-h-[280px] overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-5">
 {JSON.stringify(exp.judgeReport, null, 2)}
               </pre>
             </div>

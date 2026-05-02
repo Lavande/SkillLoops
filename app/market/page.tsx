@@ -44,21 +44,21 @@ export default function MarketPage() {
 
   return (
     <div className="flex flex-col gap-6 pt-6">
-      <header className="flex items-end justify-between gap-4">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="caption mb-2">MARKET INDEX</div>
           <h1 className="font-display text-display-2 uppercase">All skills on SLP</h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
           <input
-            className="plate w-64 focus:outline-none"
+            className="plate w-full focus:outline-none sm:w-64"
             placeholder="search by name…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && load()}
           />
           <select
-            className="plate"
+            className="plate w-full sm:w-auto"
             value={sort}
             onChange={(e) => setSort(e.target.value)}
           >
@@ -107,7 +107,7 @@ function SkillCard({ r }: { r: any }) {
   return (
     <Link href={`/skill/${r.skillId}`} className="block">
       <article className="border border-ink bg-paper hover:bg-paper-raised transition-colors relative">
-        <header className="flex items-center justify-between border-b border-ink px-4 py-2">
+        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-ink px-4 py-2">
           <Chip tone="ink">{r.category}</Chip>
           <span className="font-mono text-[10px] text-muted uppercase tracking-[0.2em]">v{r.currentVersion}</span>
         </header>
@@ -133,7 +133,7 @@ function SkillCard({ r }: { r: any }) {
               <span>floor {(r.minAuthorRatioBps / 100).toFixed(0)}%</span>
             </div>
           </div>
-          <footer className="mt-4 flex items-center justify-between">
+          <footer className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <MonoId value={r.author} prefix="by" />
             <span className="accent-underline font-mono text-[10px] uppercase tracking-[0.2em]">open →</span>
           </footer>

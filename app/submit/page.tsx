@@ -113,7 +113,7 @@ export default function SubmitPage() {
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
-        <div className="mt-3 flex items-center gap-3">
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
           <Btn variant="primary" onClick={onSubmit} disabled={!validation.ok || !wallet}>
             {wallet ? "Sign & submit" : "Connect wallet to submit"}
           </Btn>

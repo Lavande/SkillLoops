@@ -359,7 +359,7 @@ export default function ConsolePage() {
 
   return (
     <div className="grid grid-cols-12 gap-6 pt-6">
-      <header className="col-span-12 flex items-end justify-between">
+      <header className="col-span-12 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="caption">DEMO / CONSOLE</div>
           <h1 className="font-display text-display-2 uppercase">Step-through controller</h1>
@@ -367,7 +367,7 @@ export default function ConsolePage() {
             ← back · → advance · runs the full PRD demo script against devnet. Personas are unlocked from the local vault and sign client-side.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Chip tone="muted">act {step.act}</Chip>
           <Chip tone="ink">{step.actLabel}</Chip>
           <Btn variant="ghost" onClick={reset}>Reset</Btn>
@@ -405,7 +405,7 @@ export default function ConsolePage() {
             </li>
           ))}
         </ol>
-        <div className="mt-3 flex items-center gap-2">
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
           <Btn variant="ink" onClick={() => setCursor((c) => Math.max(0, c - 1))} disabled={cursor === 0 || running}>← Back</Btn>
           <Btn variant="primary" onClick={advance} disabled={running || (!personasReady && !!step.action && step.action !== "reset_then_seed")}>
             {running ? "running…" : step.action ? "Run step →" : "Next →"}
@@ -425,7 +425,7 @@ export default function ConsolePage() {
       <section className="col-span-12 lg:col-span-8 flex flex-col gap-4">
         <LabeledBox title="VIEWPORT" code={step.focus ?? "—"}>
           <div className="flex flex-col gap-3">
-            <div className="flex items-start gap-4">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start">
               <div className="flex-1">
                 <div className="font-display text-xl uppercase">{step.title}</div>
                 <p className="font-serif text-base mt-1 max-w-2xl leading-[1.35]">{step.description}</p>
@@ -441,7 +441,7 @@ export default function ConsolePage() {
                 ) : null}
                 <TxStatus status={txStatus} sig={txSig} cluster={cluster} />
               </div>
-              <SkillLoopMotif size={180} active={step.activeStage ?? null} spinTrigger={loopTrigger} dense />
+              <SkillLoopMotif size={180} active={step.activeStage ?? null} spinTrigger={loopTrigger} dense className="self-center md:self-start" />
             </div>
 
             {shares ? (
@@ -453,7 +453,7 @@ export default function ConsolePage() {
                   minAuthorRatioBps={shares.ledger.minAuthorRatioBps}
                   annotate={false}
                 />
-                <div className="mt-3 grid grid-cols-4 gap-3 font-mono text-[11px]">
+                <div className="mt-3 grid grid-cols-1 gap-3 font-mono text-[11px] sm:grid-cols-2 xl:grid-cols-4">
                   {shares.holders.slice(0, 4).map((h: any) => (
                     <div key={h.holder} className="flex items-center gap-2 min-w-0">
                       <MonoId value={h.holder} />

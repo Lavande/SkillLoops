@@ -92,28 +92,30 @@ function MePageInner() {
 
   return (
     <div className="grid grid-cols-12 gap-6 pt-6">
-      <header className="col-span-12 flex items-end justify-between">
+      <header className="col-span-12 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="caption">ME</div>
-          <div className="flex items-center gap-3 mt-1">
+          <div className="mt-1 flex flex-wrap items-center gap-3">
             <MonoId value={data.wallet} prefix="wallet" />
             <span className="font-display text-2xl uppercase">{fmtSol(data.balance, 4)}</span>
             <Chip tone="muted">balance</Chip>
           </div>
         </div>
-        <nav className="flex border border-ink bg-paper-raised">
-          {TABS.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] border-r border-ink last:border-r-0 ${
-                tab === t ? "bg-ink text-paper" : ""
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-        </nav>
+        <div className="w-full overflow-x-auto lg:w-auto">
+          <nav className="flex w-max min-w-full border border-ink bg-paper-raised lg:min-w-0">
+            {TABS.map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`whitespace-nowrap border-r border-ink px-3 py-2 font-mono text-[11px] uppercase tracking-[0.16em] last:border-r-0 sm:px-4 sm:tracking-[0.18em] ${
+                  tab === t ? "bg-ink text-paper" : ""
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </nav>
+        </div>
       </header>
 
       <div className="col-span-12">
@@ -121,7 +123,7 @@ function MePageInner() {
       </div>
 
       {tab === "Overview" ? (
-        <section className="col-span-12 grid grid-cols-5 gap-4">
+        <section className="col-span-12 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:gap-4">
           <DataPlate label="published" value={data.published.length.toString()} />
           <DataPlate label="subscriptions" value={data.subscriptions.length.toString()} />
           <DataPlate label="holdings" value={data.holdings.length.toString()} />
@@ -185,12 +187,12 @@ function MePageInner() {
           {data.claimable.length === 0 ? <Empty text="Nothing to claim right now." /> : (
             <ul className="flex flex-col">
               {data.claimable.map((c: any, i: number) => (
-                <li key={`${c.skillId}.${c.snapshotId}`} className={`flex items-center justify-between px-2 py-3 ${i > 0 ? "border-t border-ink/20" : ""}`}>
-                  <div className="flex items-center gap-4">
+                <li key={`${c.skillId}.${c.snapshotId}`} className={`flex flex-col gap-3 px-2 py-3 sm:flex-row sm:items-center sm:justify-between ${i > 0 ? "border-t border-ink/20" : ""}`}>
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                     <Link className="accent-underline font-display uppercase text-lg" href={`/skill/${c.skillId}`}>{c.skillName}</Link>
                     <Chip tone="muted">snapshot #{c.snapshotId}</Chip>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                     <span className="font-mono text-sm">{fmtSol(c.amount, 6)}</span>
                     <Btn variant="primary" onClick={() => onClaim(c.skillId, c.snapshotId)}>Claim</Btn>
                   </div>

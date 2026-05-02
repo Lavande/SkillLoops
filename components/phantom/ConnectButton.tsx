@@ -24,7 +24,7 @@ export function ConnectButton() {
 
   if (connected && publicKey) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
         <span className="caption">wallet</span>
         <MonoId value={publicKey.toBase58()} />
         <button
@@ -39,7 +39,7 @@ export function ConnectButton() {
   return (
     <button
       onClick={onConnect}
-      className="font-mono text-[11px] uppercase tracking-[0.2em] border border-ink px-3 py-1.5 bg-ink text-paper hover:bg-accent hover:text-ink transition-colors"
+      className="w-full border border-ink bg-ink px-3 py-2 text-center font-mono text-[11px] uppercase tracking-[0.18em] text-paper transition-colors hover:bg-accent hover:text-ink sm:w-auto sm:py-1.5 sm:tracking-[0.2em]"
     >
       {connecting ? "connecting…" : "Connect Phantom"}
     </button>

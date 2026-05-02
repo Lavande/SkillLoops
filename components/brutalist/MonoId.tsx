@@ -36,14 +36,14 @@ export function MonoId({
       type="button"
       onClick={onCopy}
       className={cn(
-        "font-mono text-xs inline-flex items-center gap-1 border border-ink/30 px-2 py-0.5 hover:border-ink",
+        "inline-flex max-w-full items-center gap-1 border border-ink/30 px-2 py-0.5 font-mono text-xs hover:border-ink",
         copyable ? "cursor-copy" : "cursor-default",
         className
       )}
       title={copyable ? `${value} — click to copy` : value}
     >
       {prefix ? <span className="text-muted">{prefix}</span> : null}
-      <span>{truncateId(value, lead, tail)}</span>
+      <span className="min-w-0 truncate">{truncateId(value, lead, tail)}</span>
       {copyable ? (
         <span className="text-[9px] uppercase tracking-[0.18em] text-muted">
           {copied ? "ok" : "cp"}

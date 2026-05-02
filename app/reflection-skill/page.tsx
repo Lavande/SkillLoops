@@ -25,7 +25,7 @@ export default function ReflectionSkillPage() {
             Instead of an SDK, the protocol ships its client as a skill. Any agent host that
             understands skills can participate — zero integration work.
           </p>
-          <div className="mt-5 flex items-center gap-3">
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
             <a href="/api/reflection-skill/download" download>
               <Btn variant="primary">Download SKILL.md</Btn>
             </a>
@@ -98,7 +98,7 @@ function CodeBlock({ id, copied, copy, code }: { id: string; copied: string | nu
       >
         {copied === id ? "copied ✓" : "copy"}
       </button>
-      <pre className="font-mono text-xs whitespace-pre-wrap leading-[1.5] bg-paper-raised border border-ink/30 p-3 pr-16">{code}</pre>
+      <pre className="overflow-x-auto whitespace-pre-wrap break-words border border-ink/30 bg-paper-raised p-3 pr-16 font-mono text-xs leading-[1.5]">{code}</pre>
     </div>
   );
 }

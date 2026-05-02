@@ -26,7 +26,7 @@ export const Btn = forwardRef<HTMLButtonElement, Props>(function Btn(
     <button
       ref={ref}
       className={cn(
-        "inline-flex items-center gap-2 px-4 py-2 uppercase tracking-[0.18em] text-[11px] disabled:opacity-40 disabled:cursor-not-allowed",
+        "inline-flex min-h-10 items-center justify-center gap-2 px-4 py-2 text-center uppercase tracking-[0.16em] text-[11px] leading-tight disabled:cursor-not-allowed disabled:opacity-40 sm:min-h-0 sm:tracking-[0.18em]",
         mono ? "font-mono" : "font-display",
         styles[variant],
         className

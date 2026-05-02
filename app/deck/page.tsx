@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn";
 
 /* ─────────────── DECK ROOT ─────────────── */
 
-export default function DemoDeck() {
+export default function DeckPage() {
   const slides = SLIDES;
   const total = slides.length;
   const [i, setI] = useState(0);
@@ -748,7 +748,7 @@ WEB APP  (skillloops.xyz)
               {[
                 ["SITE", "skillloops.xyz"],
                 ["LIVE", "/console"],
-                ["DECK", "/demo"],
+                ["DECK", "/deck"],
               ].map(([k, v]) => (
                 <div key={k} className="border border-ink bg-paper-raised p-3">
                   <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">{k}</div>

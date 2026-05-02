@@ -7,37 +7,41 @@ import { ConnectButton } from "@/components/phantom/ConnectButton";
 
 export function SiteFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  // The /demo deck takes over the viewport — render bare so the slides own the screen.
-  if (pathname?.startsWith("/demo")) {
+  const cluster = process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? "devnet";
+  const networkLabel = cluster === "mainnet-beta" ? "mainnet" : cluster;
+  // The /deck presentation takes over the viewport so the slides own the screen.
+  if (pathname?.startsWith("/deck")) {
     return <>{children}</>;
   }
 
   return (
-    <div className="min-h-screen bp-grid-dots">
+    <div className="min-h-screen overflow-x-clip bp-grid-dots">
       <header className="border-b border-ink bg-paper/95 backdrop-blur">
-        <div className="max-w-frame mx-auto px-6 py-4 flex items-center justify-between gap-6">
-          <Link href="/" className="flex items-center gap-3">
+        <div className="max-w-frame mx-auto px-4 sm:px-6 py-3 sm:py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-6">
+          <Link href="/" className="flex min-w-0 items-center gap-3 self-start">
             <LoopGlyph />
-            <div className="font-display text-lg uppercase tracking-[0.14em]">
+            <div className="font-display text-base sm:text-lg uppercase tracking-[0.1em] sm:tracking-[0.14em] leading-tight">
               Skill Loops <span className="text-accent">// Protocol</span>
             </div>
           </Link>
-          <nav className="flex items-center gap-6 font-mono text-[11px] uppercase tracking-[0.18em]">
-            <Link href="/market" className="accent-underline">Market</Link>
-            <Link href="/publish" className="accent-underline">Publish</Link>
-            <Link href="/submit" className="accent-underline">Submit</Link>
-            <Link href="/reflection-skill" className="accent-underline">Reflection</Link>
-            <Link href="/console" className="accent-underline">Console</Link>
-            <Link href="/me" className="accent-underline">Me</Link>
+          <nav className="w-full overflow-x-auto font-mono text-[11px] uppercase tracking-[0.13em] sm:tracking-[0.16em] lg:w-auto lg:tracking-[0.18em]">
+            <div className="flex min-w-full flex-wrap items-center gap-x-4 gap-y-2 pb-1 lg:w-max lg:min-w-0 lg:flex-nowrap lg:gap-6 lg:pb-0">
+              <Link href="/market" className="accent-underline whitespace-nowrap">Market</Link>
+              <Link href="/publish" className="accent-underline whitespace-nowrap">Publish</Link>
+              <Link href="/submit" className="accent-underline whitespace-nowrap">Submit</Link>
+              <Link href="/reflection-skill" className="accent-underline whitespace-nowrap">Reflection</Link>
+              <Link href="/deck" className="accent-underline whitespace-nowrap">Deck</Link>
+              <Link href="/me" className="accent-underline whitespace-nowrap">Me</Link>
+            </div>
           </nav>
           <ConnectButton />
         </div>
       </header>
-      <main className="max-w-frame mx-auto px-6 pt-6 pb-24">{children}</main>
+      <main className="max-w-frame mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-20 sm:pb-24">{children}</main>
       <footer className="border-t border-ink bg-paper">
-        <div className="max-w-frame mx-auto px-6 py-4 font-mono text-[10px] uppercase tracking-[0.2em] text-muted flex items-center justify-between">
-          <span>SLP / frontend shell / mock backend</span>
-          <span>sig: SIGNED · net: DEVNET-MOCK</span>
+        <div className="max-w-frame mx-auto px-4 sm:px-6 py-4 pb-[env(safe-area-inset-bottom)] font-mono text-[10px] uppercase tracking-[0.16em] sm:tracking-[0.2em] text-muted flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <span>Copyright 2026 Skill Loops Protocol</span>
+          <span>System operational · network: {networkLabel}</span>
         </div>
       </footer>
     </div>
