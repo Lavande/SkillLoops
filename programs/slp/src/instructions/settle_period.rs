@@ -3,7 +3,7 @@ use anchor_lang::system_program;
 use crate::{
     error::SlpError,
     events::*,
-    math::{compute_claims, Holder},
+    math::{compute_ownership_claims, OwnershipHolder},
     state::*,
 };
 
@@ -53,13 +53,15 @@ pub fn handler<'info>(
         pool.current_period_revenue = 0;
         pool.current_period_start = now;
         pool.last_settlement_time = now;
-        pool.snapshot_total_shares = ledger.total_shares;
+        pool.snapshot_author_ownership_bps = ledger.author_ownership_bps;
+        pool.snapshot_contributor_pool_bps = ledger.contributor_pool_bps;
         pool.snapshot_id = next_snapshot_id;
         emit!(PeriodSettled {
             skill: skill_key,
             snapshot_id: next_snapshot_id,
             period_revenue: 0,
-            total_shares: ledger.total_shares,
+            author_ownership_bps: ledger.author_ownership_bps,
+            contributor_pool_bps: ledger.contributor_pool_bps,
         });
         return Ok(());
     }
@@ -67,8 +69,8 @@ pub fn handler<'info>(
     let remaining = ctx.remaining_accounts;
     require!(remaining.len() % 2 == 0, SlpError::SettleAccountsUnpaired);
 
-    let mut holders: Vec<Holder> = Vec::with_capacity(remaining.len() / 2);
-    let mut sum_shares: u64 = 0;
+    let mut holders: Vec<OwnershipHolder> = Vec::with_capacity(remaining.len() / 2);
+    let mut sum_contributor_weight: u64 = 0;
 
     for (i, pair) in remaining.chunks(2).enumerate() {
         let share_ai = &pair[0];
@@ -76,7 +78,13 @@ pub fn handler<'info>(
 
         let share: ShareAccount = ShareAccount::try_deserialize(&mut &share_ai.data.borrow()[..])?;
         require!(share.skill == skill_key, SlpError::ShareAccountMismatch);
-        require!(share.shares > 0, SlpError::SharesMustBeNonzero);
+        let is_author = share.holder == ctx.accounts.skill.author;
+        if !is_author {
+            require!(share.contribution_weight > 0, SlpError::SharesMustBeNonzero);
+            sum_contributor_weight = sum_contributor_weight
+                .checked_add(share.contribution_weight)
+                .ok_or(error!(SlpError::HoldersIncomplete))?;
+        }
 
         let (expected_share_pda, _) = Pubkey::find_program_address(
             &[
@@ -99,13 +107,27 @@ pub fn handler<'info>(
         );
         require_keys_eq!(claim_ai.key(), expected_claim_pda, SlpError::WrongClaimPda);
 
-        sum_shares = sum_shares.checked_add(share.shares).ok_or(error!(SlpError::HoldersIncomplete))?;
-        holders.push(Holder { shares: share.shares, index: i });
+        holders.push(OwnershipHolder {
+            contribution_weight: share.contribution_weight,
+            index: i,
+            is_author,
+        });
     }
 
-    require_eq!(sum_shares, ledger.total_shares, SlpError::HoldersIncomplete);
+    require!(holders.iter().any(|h| h.is_author), SlpError::HoldersIncomplete);
+    require_eq!(
+        sum_contributor_weight,
+        ledger.total_contributor_weight,
+        SlpError::HoldersIncomplete
+    );
 
-    let claims = compute_claims(&holders, period_revenue, ledger.total_shares);
+    let claims = compute_ownership_claims(
+        &holders,
+        period_revenue,
+        ledger.author_ownership_bps,
+        ledger.contributor_pool_bps,
+        ledger.total_contributor_weight,
+    );
 
     let rent = &ctx.accounts.rent;
     let space = ClaimableRevenue::SPACE;
@@ -165,14 +187,16 @@ pub fn handler<'info>(
     pool.current_period_revenue = 0;
     pool.current_period_start = now;
     pool.last_settlement_time = now;
-    pool.snapshot_total_shares = ledger.total_shares;
+    pool.snapshot_author_ownership_bps = ledger.author_ownership_bps;
+    pool.snapshot_contributor_pool_bps = ledger.contributor_pool_bps;
     pool.snapshot_id = next_snapshot_id;
 
     emit!(PeriodSettled {
         skill: skill_key,
         snapshot_id: next_snapshot_id,
         period_revenue,
-        total_shares: ledger.total_shares,
+        author_ownership_bps: ledger.author_ownership_bps,
+        contributor_pool_bps: ledger.contributor_pool_bps,
     });
     Ok(())
 }

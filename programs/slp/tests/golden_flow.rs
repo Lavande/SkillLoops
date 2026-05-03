@@ -308,12 +308,13 @@ fn publish_skill_initializes_cap_table() {
     assert_eq!(skill.author, p.alice.pubkey());
 
     let ledger: ShareLedger = load(&svm, &pdas.ledger);
-    assert_eq!(ledger.total_shares, 1000);
-    assert_eq!(ledger.author_shares, 1000);
+    assert_eq!(ledger.author_ownership_bps, 10_000);
+    assert_eq!(ledger.contributor_pool_bps, 0);
+    assert_eq!(ledger.total_contributor_weight, 0);
     assert_eq!(ledger.contributor_count, 0);
 
     let author_share: ShareAccount = load(&svm, &pdas.author_share);
-    assert_eq!(author_share.shares, 1000);
+    assert_eq!(author_share.contribution_weight, 0);
     assert_eq!(author_share.holder, p.alice.pubkey());
 
     let v1: SkillVersion = load(&svm, &pdas.version1);
@@ -342,7 +343,7 @@ fn subscribe_creates_share_account_at_zero() {
     let (bob_sub_pda, _) = pda(&program_id, &[Subscription::SEED_PREFIX, pdas.skill.as_ref(), p.bob.pubkey().as_ref()]);
 
     let bob_share: ShareAccount = load(&svm, &bob_share_pda);
-    assert_eq!(bob_share.shares, 0);
+    assert_eq!(bob_share.contribution_weight, 0);
 
     let bob_sub: Subscription = load(&svm, &bob_sub_pda);
     assert!(bob_sub.is_active);
@@ -359,7 +360,7 @@ fn subscribe_creates_share_account_at_zero() {
 }
 
 #[test]
-fn submit_and_evaluate_mints_shares() {
+fn submit_and_evaluate_updates_ownership_weight() {
     let (mut svm, program_id) = new_svm_with_program();
     let p = Personas::fresh();
     fund(&mut svm, &p.admin, 10_000_000_000);
@@ -389,15 +390,18 @@ fn submit_and_evaluate_mints_shares() {
 
     let exp: ExperienceRecord = load(&svm, &exp_pda);
     assert_eq!(exp.status, slp::constants::STATUS_EVALUATED);
-    assert_eq!(exp.shares_minted, 380);
+    assert_eq!(exp.contribution_weight_delta, 95);
+    assert_eq!(exp.ownership_delta_bps, 0);
 
     let ledger: ShareLedger = load(&svm, &pdas.ledger);
-    assert_eq!(ledger.total_shares, 1380);
+    assert_eq!(ledger.author_ownership_bps, 10_000);
+    assert_eq!(ledger.contributor_pool_bps, 0);
+    assert_eq!(ledger.total_contributor_weight, 95);
     assert_eq!(ledger.contributor_count, 1);
 
     let (bob_share_pda, _) = pda(&program_id, &[ShareAccount::SEED_PREFIX, pdas.skill.as_ref(), p.bob.pubkey().as_ref()]);
     let bob_share: ShareAccount = load(&svm, &bob_share_pda);
-    assert_eq!(bob_share.shares, 380);
+    assert_eq!(bob_share.contribution_weight, 95);
     assert!(bob_share.lock_until > 0);
 }
 
@@ -455,18 +459,19 @@ fn settle_distributes_proportionally() {
     ]);
 
     // Pool: Alice + Bob + Carol subscriptions = 3 × 100_000_000 = 300_000_000 lamports.
-    // Floor-divide split with remainder to largest-share holder.
-    // Alice 1000/1380: 300M * 1000 / 1380 = 217_391_304 + remainder 1 → 217_391_305.
-    // Bob   380/1380:  300M * 380  / 1380 = 82_608_695.
+    // Bob's 38/50 score at k=10 earns internal weight but does not yet unlock
+    // a contributor ownership pool, so Alice receives the full period.
     let ac: ClaimableRevenue = load(&svm, &alice_claim);
     let bc: ClaimableRevenue = load(&svm, &bob_claim);
-    assert_eq!(ac.amount, 217_391_305);
-    assert_eq!(bc.amount, 82_608_695);
+    assert_eq!(ac.amount, 300_000_000);
+    assert_eq!(bc.amount, 0);
     assert_eq!(ac.amount + bc.amount, 300_000_000);
 
     let pool: RevenuePool = load(&svm, &pdas.pool);
     assert_eq!(pool.current_period_revenue, 0);
     assert_eq!(pool.snapshot_id, 1);
+    assert_eq!(pool.snapshot_author_ownership_bps, 10_000);
+    assert_eq!(pool.snapshot_contributor_pool_bps, 0);
 }
 
 #[test]
@@ -501,14 +506,13 @@ fn claim_transfers_lamports() {
     let bob_before = svm.get_account(&p.bob.pubkey()).unwrap().lamports;
 
     send_ix(&mut svm, ix_claim(&program_id, &p.alice.pubkey(), pdas.skill, 1), &p.alice, &[]).unwrap();
-    send_ix(&mut svm, ix_claim(&program_id, &p.bob.pubkey(), pdas.skill, 1), &p.bob, &[]).unwrap();
 
     let alice_after = svm.get_account(&p.alice.pubkey()).unwrap().lamports;
     let bob_after = svm.get_account(&p.bob.pubkey()).unwrap().lamports;
 
-    // Same 300M pool setup: Alice ≈ 217M, Bob ≈ 82M (see settle_distributes_proportionally).
-    assert!(alice_after > alice_before + 217_000_000, "Alice got {}", alice_after - alice_before);
-    assert!(bob_after > bob_before + 82_000_000, "Bob got {}", bob_after - bob_before);
+    // Same 300M pool setup: Bob has internal weight but no unlocked ownership pool yet.
+    assert!(alice_after > alice_before + 299_000_000, "Alice got {}", alice_after - alice_before);
+    assert_eq!(bob_after, bob_before);
 
     let (alice_claim, _) = pda(&program_id, &[
         ClaimableRevenue::SEED_PREFIX, pdas.skill.as_ref(), p.alice.pubkey().as_ref(), &1u64.to_le_bytes(),

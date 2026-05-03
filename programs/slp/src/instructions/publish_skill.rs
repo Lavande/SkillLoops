@@ -115,10 +115,13 @@ pub fn handler(ctx: Context<PublishSkill>, args: PublishSkillArgs) -> Result<()>
 
     let ledger = &mut ctx.accounts.ledger;
     ledger.skill = skill.key();
-    ledger.total_shares = INITIAL_TOTAL_SHARES;
-    ledger.author_shares = INITIAL_TOTAL_SHARES;
+    ledger.author_ownership_bps = OWNERSHIP_BPS;
+    ledger.contributor_pool_bps = 0;
     ledger.min_author_ratio_bps = args.min_author_ratio_bps;
+    ledger.total_contributor_weight = 0;
     ledger.contributor_count = 0;
+    ledger.points_per_100bps = POINTS_PER_100BPS_DEFAULT;
+    ledger.max_pool_increase_per_evaluation_bps = MAX_POOL_INCREASE_PER_EVALUATION_BPS_DEFAULT;
     ledger.last_snapshot_time = now;
     ledger.bump = ctx.bumps.ledger;
 
@@ -128,7 +131,8 @@ pub fn handler(ctx: Context<PublishSkill>, args: PublishSkillArgs) -> Result<()>
     pool.total_lifetime_revenue = 0;
     pool.current_period_start = now;
     pool.period_length = args.period_length;
-    pool.snapshot_total_shares = 0;
+    pool.snapshot_author_ownership_bps = OWNERSHIP_BPS;
+    pool.snapshot_contributor_pool_bps = 0;
     pool.snapshot_id = 0;
     pool.last_settlement_time = 0;
     pool.bump = ctx.bumps.pool;
@@ -136,7 +140,7 @@ pub fn handler(ctx: Context<PublishSkill>, args: PublishSkillArgs) -> Result<()>
     let author_share = &mut ctx.accounts.author_share;
     author_share.holder = ctx.accounts.author.key();
     author_share.skill = skill.key();
-    author_share.shares = INITIAL_TOTAL_SHARES;
+    author_share.contribution_weight = 0;
     author_share.lock_until = 0;
     author_share.first_contribution_at = 0;
     author_share.last_contribution_at = 0;

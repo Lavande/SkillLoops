@@ -361,10 +361,13 @@ fn evaluate_score_19_rejects_without_minting() {
 
     let exp: ExperienceRecord = load(&svm, &exp_pda);
     assert_eq!(exp.status, slp::constants::STATUS_REJECTED);
-    assert_eq!(exp.shares_minted, 0);
+    assert_eq!(exp.contribution_weight_delta, 0);
+    assert_eq!(exp.ownership_delta_bps, 0);
 
     let ledger: ShareLedger = load(&svm, &pdas.ledger);
-    assert_eq!(ledger.total_shares, 1000);
+    assert_eq!(ledger.author_ownership_bps, 10_000);
+    assert_eq!(ledger.contributor_pool_bps, 0);
+    assert_eq!(ledger.total_contributor_weight, 0);
     assert_eq!(ledger.contributor_count, 0);
 }
 

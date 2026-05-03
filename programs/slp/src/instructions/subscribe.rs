@@ -71,7 +71,7 @@ pub fn handler(ctx: Context<Subscribe>) -> Result<()> {
     if share.holder == Pubkey::default() {
         share.holder = ctx.accounts.subscriber.key();
         share.skill = ctx.accounts.skill.key();
-        share.shares = 0;
+        share.contribution_weight = 0;
         share.lock_until = 0;
         share.first_contribution_at = 0;
         share.last_contribution_at = 0;

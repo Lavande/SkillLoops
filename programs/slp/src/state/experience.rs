@@ -11,7 +11,8 @@ pub struct ExperienceRecord {
     pub arweave_tx_id: String,         // max MAX_ARWEAVE_TX_ID_LEN
     pub status: u8,                    // STATUS_PENDING / STATUS_EVALUATED / STATUS_REJECTED
     pub contribution_score: u8,
-    pub shares_minted: u64,
+    pub contribution_weight_delta: u64,
+    pub ownership_delta_bps: u16,
     pub submitted_at: i64,
     pub evaluated_at: i64,
     pub judge_report_tx_id: String,    // max MAX_ARWEAVE_TX_ID_LEN
@@ -29,6 +30,7 @@ impl ExperienceRecord {
         + 1
         + 1
         + 8
+        + 2
         + 8
         + 8
         + (4 + MAX_ARWEAVE_TX_ID_LEN)
