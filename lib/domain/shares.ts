@@ -101,9 +101,12 @@ export function evaluateContributionOwnership({
     maxContributorPoolBps,
     Math.floor(totalContributorWeight / ledger.points_per_100bps) * 100,
   );
-  const contributorPoolBps = Math.min(
-    targetPoolBps,
-    ledger.contributor_pool_bps + ledger.max_pool_increase_per_evaluation_bps,
+  const contributorPoolBps = Math.max(
+    ledger.contributor_pool_bps,
+    Math.min(
+      targetPoolBps,
+      ledger.contributor_pool_bps + ledger.max_pool_increase_per_evaluation_bps,
+    ),
   );
   const newLedger = {
     ...ledger,

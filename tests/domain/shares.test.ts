@@ -106,7 +106,7 @@ describe("evaluateContributionOwnership", () => {
     expect(result.newLedger.contributor_pool_bps).toBe(6000);
   });
 
-  it("uses target pool when the current contributor pool is above target", () => {
+  it("redistributes fixed-floor contributor pool by contributor weights", () => {
     const ledger = baseLedger({
       author_ownership_bps: 4000,
       contributor_pool_bps: 6000,
@@ -128,12 +128,12 @@ describe("evaluateContributionOwnership", () => {
       ],
     });
 
-    expect(result.newLedger.author_ownership_bps).toBe(9200);
-    expect(result.newLedger.contributor_pool_bps).toBe(800);
+    expect(result.newLedger.author_ownership_bps).toBe(4000);
+    expect(result.newLedger.contributor_pool_bps).toBe(6000);
     expect(rows).toEqual([
-      { holder: "author", role: "author", ownershipBps: 9200 },
-      { holder: "bob", role: "contributor", ownershipBps: 600 },
-      { holder: "charlie", role: "contributor", ownershipBps: 200 },
+      { holder: "author", role: "author", ownershipBps: 4000 },
+      { holder: "bob", role: "contributor", ownershipBps: 4500 },
+      { holder: "charlie", role: "contributor", ownershipBps: 1500 },
     ]);
   });
 
