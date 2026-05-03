@@ -153,6 +153,7 @@ function migrate(db: DB) {
     );
   `);
   migrateExperiencesCompositeKey(db);
+  backfillShareLedgerAuthorFloors(db);
 }
 
 function migrateExperiencesCompositeKey(db: DB) {
@@ -212,5 +213,22 @@ function migrateExperiencesCompositeKey(db: DB) {
       judge_report_json
     FROM experiences_old_global_pk;
     DROP TABLE experiences_old_global_pk;
+  `);
+}
+
+function backfillShareLedgerAuthorFloors(db: DB) {
+  db.exec(`
+    UPDATE share_ledgers
+    SET min_author_ratio_bps = (
+      SELECT skills.min_author_ratio_bps
+      FROM skills
+      WHERE skills.skill_id = share_ledgers.skill_id
+    )
+    WHERE EXISTS (
+      SELECT 1
+      FROM skills
+      WHERE skills.skill_id = share_ledgers.skill_id
+        AND skills.min_author_ratio_bps != share_ledgers.min_author_ratio_bps
+    );
   `);
 }

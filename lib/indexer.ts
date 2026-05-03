@@ -193,19 +193,28 @@ function applyEventLocal(db: DB, ev: SlpEvent): void {
       const holder = (ev.data.holder as PublicKey).toBase58();
       const amount = Number(ev.data.amount);
       const totalAfter = Number(ev.data.totalSharesAfter);
+      const ledger = db.prepare(`SELECT total_shares FROM share_ledgers WHERE skill_id = ?`).get(skillId) as any;
+      const currentTotal = Number(ledger?.total_shares ?? 0);
+      const sharesToApply = Math.min(amount, Math.max(0, totalAfter - currentTotal));
       const existing = db.prepare(`SELECT shares FROM share_accounts WHERE holder=? AND skill_id=?`).get(holder, skillId) as any;
       const wasZero = (existing?.shares ?? 0) === 0;
-      db.prepare(`UPDATE share_ledgers SET total_shares = ?, last_snapshot_time = ? WHERE skill_id = ?`).run(totalAfter, t, skillId);
-      if (wasZero && amount > 0) {
+      db.prepare(`UPDATE share_ledgers
+          SET total_shares = CASE WHEN total_shares < ? THEN ? ELSE total_shares END,
+              last_snapshot_time = ?
+          WHERE skill_id = ?`)
+        .run(totalAfter, totalAfter, t, skillId);
+      if (wasZero && sharesToApply > 0) {
         db.prepare(`UPDATE share_ledgers SET contributor_count = contributor_count + 1 WHERE skill_id = ?`).run(skillId);
       }
-      db.prepare(`UPDATE share_accounts
-        SET shares = shares + ?,
-            lock_until = ?,
-            first_contribution_at = COALESCE(first_contribution_at, ?),
-            last_contribution_at = ?
-        WHERE holder = ? AND skill_id = ?`)
-        .run(amount, t + 180 * 24 * 60 * 60, t, t, holder, skillId);
+      if (sharesToApply > 0) {
+        db.prepare(`UPDATE share_accounts
+          SET shares = shares + ?,
+              lock_until = ?,
+              first_contribution_at = COALESCE(first_contribution_at, ?),
+              last_contribution_at = ?
+          WHERE holder = ? AND skill_id = ?`)
+          .run(sharesToApply, t + 180 * 24 * 60 * 60, t, t, holder, skillId);
+      }
       return;
     }
     case "PeriodSettled": {
@@ -266,6 +275,8 @@ async function enrichAfterCommit(conn: Connection, db: DB, ev: SlpEvent): Promis
              Buffer.from(acct.contentHash).toString("hex"), acct.arweaveTxId,
              Number(acct.subscriptionPrice.toString()), acct.minAuthorRatioBps,
              skillPk.toBase58());
+      db.prepare(`UPDATE share_ledgers SET min_author_ratio_bps = ? WHERE skill_id = ?`)
+        .run(acct.minAuthorRatioBps, skillPk.toBase58());
     } catch (e) { console.error("[indexer] enrich skill failed", e); }
   }
   if (ev.name === "ExperienceSubmitted") {

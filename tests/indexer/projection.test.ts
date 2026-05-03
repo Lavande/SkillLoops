@@ -5,11 +5,13 @@ import { applyEventForTest, enrichAfterCommitForTest } from "@/lib/indexer";
 
 const programMock = vi.hoisted(() => ({
   experienceFetch: vi.fn(),
+  skillFetch: vi.fn(),
 }));
 
 vi.mock("@/lib/chain/program", () => ({
   getProgram: () => ({
     account: {
+      skill: { fetch: programMock.skillFetch },
       experienceRecord: { fetch: programMock.experienceFetch },
     },
   }),
@@ -20,7 +22,11 @@ const OTHER_SKILL = new PublicKey("11111111111111111111111111111117");
 const AUTHOR = new PublicKey("11111111111111111111111111111115");
 const BOB = new PublicKey("11111111111111111111111111111116");
 
-beforeEach(() => _resetSingletonForTesting());
+beforeEach(() => {
+  _resetSingletonForTesting();
+  programMock.experienceFetch.mockReset();
+  programMock.skillFetch.mockReset();
+});
 
 describe("applyEvent projections (shape-only, no RPC fetch)", () => {
   it("SkillPublished creates skills row with placeholder metadata", async () => {
@@ -70,6 +76,27 @@ describe("applyEvent projections (shape-only, no RPC fetch)", () => {
     expect(ledger.contributor_count).toBe(1);
     const share = db.prepare(`SELECT shares FROM share_accounts WHERE holder = ? AND skill_id = ?`).get(BOB.toBase58(), SKILL.toBase58()) as any;
     expect(share.shares).toBe(380);
+  });
+
+  it("does not double-add holder shares when a SharesMinted event is replayed", async () => {
+    const db = getDb(":memory:");
+    db.prepare(`INSERT INTO share_ledgers (skill_id, total_shares, author_shares, min_author_ratio_bps, contributor_count, last_snapshot_time) VALUES (?,1000,1000,4000,0,100)`)
+      .run(SKILL.toBase58());
+    db.prepare(`INSERT INTO share_accounts (holder, skill_id, shares, lock_until, first_contribution_at, last_contribution_at) VALUES (?,?,0,0,NULL,NULL)`)
+      .run(BOB.toBase58(), SKILL.toBase58());
+    const ev = {
+      name: "SharesMinted" as const,
+      data: { skill: SKILL, holder: BOB, amount: 430, totalSharesAfter: 1430 },
+    };
+
+    await applyEventForTest(db, ev, "sig-replay-1", 3, true);
+    await applyEventForTest(db, ev, "sig-replay-2", 4, true);
+
+    const ledger = db.prepare(`SELECT total_shares, contributor_count FROM share_ledgers WHERE skill_id = ?`).get(SKILL.toBase58()) as any;
+    expect(ledger.total_shares).toBe(1430);
+    expect(ledger.contributor_count).toBe(1);
+    const share = db.prepare(`SELECT shares FROM share_accounts WHERE holder = ? AND skill_id = ?`).get(BOB.toBase58(), SKILL.toBase58()) as any;
+    expect(share.shares).toBe(430);
   });
 
   it("ExperienceSubmitted + ExperienceEvaluated update the experiences row", async () => {
@@ -136,6 +163,30 @@ describe("applyEvent projections (shape-only, no RPC fetch)", () => {
     expect(exp.content_hash).toBe("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
     expect(exp.arweave_tx_id).toBe("irys_bundle_tx");
     expect(exp.submitted_at).toBe(1234);
+  });
+
+  it("SkillPublished enrichment backfills the ledger author floor from the on-chain skill", async () => {
+    const db = getDb(":memory:");
+    const ev = {
+      name: "SkillPublished" as const,
+      data: { skill: SKILL, author: AUTHOR, createdAt: 100 },
+    };
+    await applyEventForTest(db, ev, "sig-skill-enrich", 4, true);
+    programMock.skillFetch.mockResolvedValueOnce({
+      name: "Alice",
+      description: "desc",
+      category: "coding",
+      contentHash: Uint8Array.from({ length: 32 }, (_v, i) => i),
+      arweaveTxId: "irys_skill_tx",
+      subscriptionPrice: { toString: () => "100000000" },
+      minAuthorRatioBps: 4000,
+    });
+    process.env.NEXT_PUBLIC_SLP_PROGRAM_ID = "5uTb4ZPTVB1HFMdTeBXELPzgaX2dcVRZoxPQW2SNzQAH";
+
+    await enrichAfterCommitForTest({} as any, db, ev);
+
+    const ledger = db.prepare(`SELECT min_author_ratio_bps FROM share_ledgers WHERE skill_id = ?`).get(SKILL.toBase58()) as any;
+    expect(ledger.min_author_ratio_bps).toBe(4000);
   });
 
   it("ExperienceEvaluated enrichment backfills judge report fields from the on-chain account", async () => {
