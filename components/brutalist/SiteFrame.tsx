@@ -39,7 +39,7 @@ export function SiteFrame({ children }: { children: ReactNode }) {
       </header>
       <main className="max-w-frame mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-20 sm:pb-24">{children}</main>
       <footer className="border-t border-ink bg-paper">
-        <div className="max-w-frame mx-auto px-4 sm:px-6 py-4 pb-[env(safe-area-inset-bottom)] font-mono text-[10px] uppercase tracking-[0.16em] sm:tracking-[0.2em] text-muted flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="max-w-frame mx-auto px-4 sm:px-6 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:py-5 sm:pb-[calc(1.25rem+env(safe-area-inset-bottom))] font-mono text-[10px] uppercase tracking-[0.16em] sm:tracking-[0.2em] text-muted flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <span>Copyright 2026 Skill Loops Protocol</span>
           <span>System operational · network: {networkLabel}</span>
         </div>
