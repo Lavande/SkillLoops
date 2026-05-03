@@ -169,18 +169,20 @@ export function deriveOwnershipBps({
     });
   }
 
-  const totalOwnershipBps = rows.reduce((sum, row) => sum + row.ownershipBps, 0);
-  const remainderBps = OWNERSHIP_BPS - totalOwnershipBps;
-  if (remainderBps > 0) {
-    let largestIndex = 0;
-    for (let index = 1; index < rows.length; index += 1) {
-      if (rows[index].ownershipBps > rows[largestIndex].ownershipBps) {
-        largestIndex = index;
+  const contributorOwnershipTotalBps = rows
+    .slice(1)
+    .reduce((sum, row) => sum + row.ownershipBps, 0);
+  const contributorRemainderBps = ledger.contributor_pool_bps - contributorOwnershipTotalBps;
+  if (contributorRemainderBps > 0 && rows.length > 1) {
+    let largestContributorIndex = 1;
+    for (let index = 2; index < rows.length; index += 1) {
+      if (rows[index].ownershipBps > rows[largestContributorIndex].ownershipBps) {
+        largestContributorIndex = index;
       }
     }
-    rows[largestIndex] = {
-      ...rows[largestIndex],
-      ownershipBps: rows[largestIndex].ownershipBps + remainderBps,
+    rows[largestContributorIndex] = {
+      ...rows[largestContributorIndex],
+      ownershipBps: rows[largestContributorIndex].ownershipBps + contributorRemainderBps,
     };
   }
 

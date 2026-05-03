@@ -185,4 +185,25 @@ describe("deriveOwnershipBps", () => {
       { holder: "c", role: "contributor", ownershipBps: 2000 },
     ]);
   });
+
+  it("keeps rounding remainder inside the contributor pool", () => {
+    const rows = deriveOwnershipBps({
+      ledger: baseLedger({
+        author_ownership_bps: 9999,
+        contributor_pool_bps: 1,
+        total_contributor_weight: 2,
+      }),
+      contributors: [
+        { holder: "a", contributor: baseContributor({ contribution_weight: 1 }) },
+        { holder: "b", contributor: baseContributor({ contribution_weight: 1 }) },
+      ],
+    });
+
+    expect(rows.reduce((sum, row) => sum + row.ownershipBps, 0)).toBe(10000);
+    expect(rows).toEqual([
+      { holder: "author", role: "author", ownershipBps: 9999 },
+      { holder: "a", role: "contributor", ownershipBps: 1 },
+      { holder: "b", role: "contributor", ownershipBps: 0 },
+    ]);
+  });
 });
