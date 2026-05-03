@@ -1,75 +1,143 @@
-import { describe, it, expect } from "vitest";
-import { settlePeriod, computeClaims } from "@/lib/domain/revenue";
+import { describe, expect, it } from "vitest";
+import { computeOwnershipClaims, settlePeriod } from "@/lib/domain/revenue";
 
 const basePool = (over = {}) => ({
-  current_period_revenue: 100_000_000, // 0.1 SOL
-  total_lifetime_revenue: 0,
+  current_period_revenue: 1000,
+  total_lifetime_revenue: 2000,
   current_period_start: 1_000_000,
   period_length: 300,
-  snapshot_total_shares: 0,
+  snapshot_author_ownership_bps: 0,
+  snapshot_contributor_pool_bps: 0,
   last_settlement_time: 0,
   ...over,
 });
 
+const byHolder = (claims: { holder: string; amount: number }[]) =>
+  Object.fromEntries(claims.map((claim) => [claim.holder, claim.amount]));
+
 describe("settlePeriod", () => {
-  it("rejects if period not elapsed", () => {
-    const r = settlePeriod({ pool: basePool(), totalShares: 1380, now: 1_000_100 });
-    expect(r.canSettle).toBe(false);
-    expect(r.reason).toBe("period_not_elapsed");
+  it("settles elapsed period and snapshots ownership bps", () => {
+    const pool = basePool();
+    const now = pool.current_period_start + pool.period_length;
+
+    const result = settlePeriod({
+      pool,
+      authorOwnershipBps: 4000,
+      contributorPoolBps: 6000,
+      now,
+    });
+
+    expect(result.canSettle).toBe(true);
+    expect(result.periodRevenue).toBe(1000);
+    expect(result.snapshotAuthorOwnershipBps).toBe(4000);
+    expect(result.snapshotContributorPoolBps).toBe(6000);
+    expect(result.newPool).toEqual({
+      ...pool,
+      current_period_revenue: 0,
+      total_lifetime_revenue: 3000,
+      current_period_start: now,
+      snapshot_author_ownership_bps: 4000,
+      snapshot_contributor_pool_bps: 6000,
+      last_settlement_time: now,
+    });
   });
 
-  it("snapshots shares and rolls the period forward", () => {
+  it('refuses before period elapsed with reason "period_not_elapsed"', () => {
     const pool = basePool();
-    const r = settlePeriod({ pool, totalShares: 1380, now: pool.current_period_start + pool.period_length + 1 });
-    expect(r.canSettle).toBe(true);
-    expect(r.snapshotTotalShares).toBe(1380);
-    expect(r.newPool.current_period_revenue).toBe(0);
-    expect(r.newPool.total_lifetime_revenue).toBe(100_000_000);
-    expect(r.newPool.snapshot_total_shares).toBe(1380);
+    const result = settlePeriod({
+      pool,
+      authorOwnershipBps: 4000,
+      contributorPoolBps: 6000,
+      now: pool.current_period_start + pool.period_length - 1,
+    });
+
+    expect(result.canSettle).toBe(false);
+    expect(result.reason).toBe("period_not_elapsed");
+    expect(result.periodRevenue).toBe(0);
+    expect(result.newPool).toBe(pool);
   });
 });
 
-describe("computeClaims", () => {
-  const two = [
-    { holder: "alice", shares: 1000 },
-    { holder: "bob", shares: 380 },
-  ];
+describe("computeOwnershipClaims", () => {
+  it("pays author 100% when no contributor weights", () => {
+    const claims = computeOwnershipClaims({
+      holders: [
+        { holder: "author", role: "author", contributionWeight: 0 },
+        { holder: "bob", role: "contributor", contributionWeight: 0 },
+      ],
+      periodRevenue: 1000,
+      authorOwnershipBps: 4000,
+      contributorPoolBps: 6000,
+      totalContributorWeight: 0,
+    });
 
-  it("PRD demo: Alice 72.5%, Bob 27.5%, Carol 0", () => {
-    const holders = [...two, { holder: "carol", shares: 0 }];
-    const claims = computeClaims({ holders, periodRevenue: 100_000_000, totalShares: 1380 });
-    // Expected: alice 72_463_768, bob 27_536_231, carol 0, and remainder(1) goes to the largest-share holder (alice).
-    const byHolder = Object.fromEntries(claims.map((c) => [c.holder, c.amount]));
-    expect(byHolder.alice + byHolder.bob + byHolder.carol).toBe(100_000_000);
-    expect(byHolder.alice).toBeCloseTo(72_463_769, -2); // ~72.46%
-    expect(byHolder.bob).toBeCloseTo(27_536_231, -2);
-    expect(byHolder.carol).toBe(0);
+    expect(byHolder(claims)).toEqual({
+      author: 1000,
+      bob: 0,
+    });
   });
 
-  it("returns all-zero when pool is empty", () => {
-    const claims = computeClaims({ holders: two, periodRevenue: 0, totalShares: 1380 });
-    expect(claims.every((c) => c.amount === 0)).toBe(true);
+  it("splits contributor pool by contribution weight", () => {
+    const claims = computeOwnershipClaims({
+      holders: [
+        { holder: "author", role: "author", contributionWeight: 0 },
+        { holder: "bob", role: "contributor", contributionWeight: 1500 },
+        { holder: "charlie", role: "contributor", contributionWeight: 500 },
+      ],
+      periodRevenue: 1000,
+      authorOwnershipBps: 4000,
+      contributorPoolBps: 6000,
+      totalContributorWeight: 2000,
+    });
+
+    expect(byHolder(claims)).toEqual({
+      author: 400,
+      bob: 450,
+      charlie: 150,
+    });
   });
 
-  it("single holder gets everything", () => {
-    const claims = computeClaims({ holders: [{ holder: "alice", shares: 1000 }], periodRevenue: 500, totalShares: 1000 });
-    expect(claims[0].amount).toBe(500);
+  it("assigns remainder deterministically to largest effective holder", () => {
+    const claims = computeOwnershipClaims({
+      holders: [
+        { holder: "author", role: "author", contributionWeight: 0 },
+        { holder: "bob", role: "contributor", contributionWeight: 1 },
+        { holder: "charlie", role: "contributor", contributionWeight: 1 },
+      ],
+      periodRevenue: 101,
+      authorOwnershipBps: 4000,
+      contributorPoolBps: 6000,
+      totalContributorWeight: 2,
+    });
+
+    const amounts = byHolder(claims);
+    expect(amounts).toEqual({
+      author: 41,
+      bob: 30,
+      charlie: 30,
+    });
+    expect(claims.reduce((sum, claim) => sum + claim.amount, 0)).toBe(101);
   });
 
-  it("distributes remainder to largest-shares holder so pool sums to exactly periodRevenue", () => {
-    const holders = [
-      { holder: "a", shares: 3 },
-      { holder: "b", shares: 3 },
-      { holder: "c", shares: 4 },
-    ];
-    const claims = computeClaims({ holders, periodRevenue: 10, totalShares: 10 });
-    const sum = claims.reduce((s, c) => s + c.amount, 0);
-    expect(sum).toBe(10);
-    // 3/10*10=3, 3/10*10=3, 4/10*10=4. No remainder; but if we change to 11:
-    const claims2 = computeClaims({ holders, periodRevenue: 11, totalShares: 10 });
-    const byHolder = Object.fromEntries(claims2.map((c) => [c.holder, c.amount]));
-    expect(byHolder.a + byHolder.b + byHolder.c).toBe(11);
-    expect(byHolder.c).toBeGreaterThanOrEqual(byHolder.a);
-    expect(byHolder.c).toBeGreaterThanOrEqual(byHolder.b);
+  it("does not give contributor-pool rounding remainder to author unless author is largest effective holder", () => {
+    const claims = computeOwnershipClaims({
+      holders: [
+        { holder: "author", role: "author", contributionWeight: 0 },
+        { holder: "bob", role: "contributor", contributionWeight: 1 },
+        { holder: "charlie", role: "contributor", contributionWeight: 1 },
+      ],
+      periodRevenue: 101,
+      authorOwnershipBps: 3000,
+      contributorPoolBps: 7000,
+      totalContributorWeight: 2,
+    });
+
+    const amounts = byHolder(claims);
+    expect(amounts).toEqual({
+      author: 30,
+      bob: 36,
+      charlie: 35,
+    });
+    expect(claims.reduce((sum, claim) => sum + claim.amount, 0)).toBe(101);
   });
 });
