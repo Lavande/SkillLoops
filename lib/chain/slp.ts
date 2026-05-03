@@ -913,19 +913,6 @@ export type Slp = {
       ]
     },
     {
-      "name": "sharesMinted",
-      "discriminator": [
-        127,
-        139,
-        238,
-        41,
-        118,
-        47,
-        122,
-        39
-      ]
-    },
-    {
       "name": "skillPublished",
       "discriminator": [
         249,
@@ -1100,19 +1087,31 @@ export type Slp = {
             "type": "u64"
           },
           {
+            "name": "contributor",
+            "type": "pubkey"
+          },
+          {
             "name": "score",
             "type": "u8"
           },
           {
-            "name": "sharesMinted",
+            "name": "contributionWeightDelta",
             "type": "u64"
           },
           {
-            "name": "approved",
-            "type": "bool"
+            "name": "ownershipDeltaBps",
+            "type": "u16"
           },
           {
-            "name": "floorHit",
+            "name": "authorOwnershipBps",
+            "type": "u16"
+          },
+          {
+            "name": "contributorPoolBps",
+            "type": "u16"
+          },
+          {
+            "name": "approved",
             "type": "bool"
           }
         ]
@@ -1161,8 +1160,12 @@ export type Slp = {
             "type": "u8"
           },
           {
-            "name": "sharesMinted",
+            "name": "contributionWeightDelta",
             "type": "u64"
+          },
+          {
+            "name": "ownershipDeltaBps",
+            "type": "u16"
           },
           {
             "name": "submittedAt",
@@ -1221,8 +1224,12 @@ export type Slp = {
             "type": "u64"
           },
           {
-            "name": "totalShares",
-            "type": "u64"
+            "name": "authorOwnershipBps",
+            "type": "u16"
+          },
+          {
+            "name": "contributorPoolBps",
+            "type": "u16"
           }
         ]
       }
@@ -1414,7 +1421,7 @@ export type Slp = {
             "type": "pubkey"
           },
           {
-            "name": "shares",
+            "name": "contributionWeight",
             "type": "u64"
           },
           {
@@ -1446,20 +1453,32 @@ export type Slp = {
             "type": "pubkey"
           },
           {
-            "name": "totalShares",
-            "type": "u64"
+            "name": "authorOwnershipBps",
+            "type": "u16"
           },
           {
-            "name": "authorShares",
-            "type": "u64"
+            "name": "contributorPoolBps",
+            "type": "u16"
           },
           {
             "name": "minAuthorRatioBps",
             "type": "u16"
           },
           {
+            "name": "totalContributorWeight",
+            "type": "u64"
+          },
+          {
             "name": "contributorCount",
             "type": "u32"
+          },
+          {
+            "name": "pointsPer100bps",
+            "type": "u64"
+          },
+          {
+            "name": "maxPoolIncreasePerEvaluationBps",
+            "type": "u16"
           },
           {
             "name": "lastSnapshotTime",
@@ -1468,30 +1487,6 @@ export type Slp = {
           {
             "name": "bump",
             "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "sharesMinted",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "skill",
-            "type": "pubkey"
-          },
-          {
-            "name": "holder",
-            "type": "pubkey"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "totalSharesAfter",
-            "type": "u64"
           }
         ]
       }

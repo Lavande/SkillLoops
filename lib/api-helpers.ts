@@ -49,3 +49,20 @@ export function genId(prefix = "sk"): string {
   const rnd = crypto.randomUUID().replace(/-/g, "").slice(0, 22);
   return `${prefix}_${rnd}`;
 }
+
+export function ownershipPct(ownershipBps: number): number {
+  return ownershipBps / 100;
+}
+
+export function contributorOwnershipBps({
+  contributorPoolBps,
+  contributionWeight,
+  totalContributorWeight,
+}: {
+  contributorPoolBps: number;
+  contributionWeight: number;
+  totalContributorWeight: number;
+}): number {
+  if (totalContributorWeight <= 0 || contributionWeight <= 0) return 0;
+  return Math.floor((contributorPoolBps * contributionWeight) / totalContributorWeight);
+}

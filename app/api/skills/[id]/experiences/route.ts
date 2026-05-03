@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getDb } from "@/lib/db";
-import { caller, guarded } from "@/lib/api-helpers";
+import { caller, guarded, ownershipPct } from "@/lib/api-helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +10,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const db = getDb();
     const rows = db
       .prepare(
-        `SELECT experience_id, skill_id, contributor, skill_version, status, contribution_score, shares_minted, submitted_at, evaluated_at, arweave_tx_id, bundle_json, judge_report_tx_id, judge_report_json FROM experiences WHERE skill_id = ? ORDER BY submitted_at DESC`
+        `SELECT experience_id, skill_id, contributor, skill_version, status, contribution_score, contribution_weight_delta, ownership_delta_bps, submitted_at, evaluated_at, arweave_tx_id, bundle_json, judge_report_tx_id, judge_report_json FROM experiences WHERE skill_id = ? ORDER BY submitted_at DESC`
       )
       .all(params.id) as any[];
     return rows.map((r) => {
@@ -20,7 +20,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         skillVersion: r.skill_version,
         status: r.status,
         contributionScore: r.contribution_score,
-        sharesMinted: r.shares_minted,
+        contributionWeightDelta: r.contribution_weight_delta,
+        ownershipDeltaBps: r.ownership_delta_bps,
+        ownershipDeltaPct: r.ownership_delta_bps == null ? null : ownershipPct(r.ownership_delta_bps),
         submittedAt: r.submitted_at,
         evaluatedAt: r.evaluated_at,
         arweaveTxId: r.arweave_tx_id,
@@ -45,7 +47,7 @@ function canSeeShareholderContent(self: string | null, skillId: string): boolean
   if (!self) return false;
   const db = getDb();
   const row = db
-    .prepare(`SELECT shares FROM share_accounts WHERE holder = ? AND skill_id = ?`)
-    .get(self, skillId) as { shares: number } | undefined;
-  return (row?.shares ?? 0) > 0;
+    .prepare(`SELECT contribution_weight FROM share_accounts WHERE holder = ? AND skill_id = ?`)
+    .get(self, skillId) as { contribution_weight: number } | undefined;
+  return (row?.contribution_weight ?? 0) > 0;
 }

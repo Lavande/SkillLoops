@@ -40,15 +40,15 @@ interface StepDef {
 
 const STEPS: StepDef[] = [
   { id: "00", act: 0, actLabel: "SETUP", title: "Reset + seed demo state", description: "Clears the SQLite indexer DB. Skills are seeded on chain ahead of time via `pnpm tsx scripts/seed-devnet.ts`; the indexer projects them into SQLite as it catches up.", action: "reset_then_seed", focus: "landing" },
-  { id: "01", act: 1, actLabel: "PUBLISH", title: "Alice is already on the market (seeded at setup)", description: "Show Alice's skill on /skill/[id]: 1000/1000 shares, author-only cap table, revenue pool 0.", focus: "skill" },
-  { id: "02", act: 2, actLabel: "SUBSCRIBE", title: "Bob subscribes to Alice's skill (0.1 SOL)", description: "Persona-signed devnet tx. A ShareAccount is created for Bob at 0 shares — he's on the cap table now.", action: "subscribe_bob", persona: "bob", focus: "skill", activeStage: "USE" },
+  { id: "01", act: 1, actLabel: "PUBLISH", title: "Alice is already on the market (seeded at setup)", description: "Show Alice's skill on /skill/[id]: 100% author ownership, empty contributor pool, revenue pool 0.", focus: "skill" },
+  { id: "02", act: 2, actLabel: "SUBSCRIBE", title: "Bob subscribes to Alice's skill (0.1 SOL)", description: "Persona-signed devnet tx. A ShareAccount is created for Bob at 0% ownership until he contributes useful experience.", action: "subscribe_bob", persona: "bob", focus: "skill", activeStage: "USE" },
   { id: "03", act: 3, actLabel: "USE & REFLECT", title: "Bob's agent uses the skill and fails on a Rust PR", description: "We skip to the produced ExperienceBundle. Note the 38/50 demo trace id — the Judge will score it as such.", activeStage: "REFLECT", focus: "skill" },
   { id: "04", act: 4, actLabel: "SUBMIT", title: "Bob submits the ExperienceBundle", description: "Creates a Pending ExperienceRecord on Alice's skill. Bundle uploaded to Arweave via Irys then submitted on chain.", action: "submit_bob_experience", persona: "bob", focus: "skill", activeStage: "SUBMIT" },
-  { id: "05", act: 4, actLabel: "JUDGE", title: "AI Judge evaluates → 38/50 APPROVE", description: "Deterministic mock judge returns exactly 38/50 for this trace. Contract mints 380 shares for Bob. Alice 72.5% / Bob 27.5%.", action: "evaluate", focus: "skill", activeStage: "JUDGE" },
-  { id: "06", act: 5, actLabel: "SUBSCRIBE 2", title: "Carol subscribes", description: "Carol pays 0.1 SOL. She's a 0-share shareholder: on the cap table but with no equity. When revenue settles she gets nothing.", action: "subscribe_carol", persona: "carol", focus: "skill" },
+  { id: "05", act: 4, actLabel: "JUDGE", title: "AI Judge evaluates → 38/50 APPROVE", description: "Deterministic mock judge returns exactly 38/50 for this trace. Contract records Bob's contribution weight; ownership only unlocks as the contributor pool grows.", action: "evaluate", focus: "skill", activeStage: "JUDGE" },
+  { id: "06", act: 5, actLabel: "SUBSCRIBE 2", title: "Carol subscribes", description: "Carol pays 0.1 SOL. She has a share account but 0% ownership because she has not contributed.", action: "subscribe_carol", persona: "carol", focus: "skill" },
   { id: "07", act: 5, actLabel: "SETTLE", title: "Settle the period", description: "Alice's skill uses a 60-second period at seed time so settle works without rewinding the devnet clock. We poll until period_end and call settle.", action: "wait_then_settle", persona: "alice", focus: "skill" },
-  { id: "08", act: 5, actLabel: "CLAIM — ALICE", title: "Alice claims her 72.5%", description: "Persona-signed tx. Lamports move into Alice's devnet balance.", action: "claim_alice", persona: "alice", focus: "me" },
-  { id: "09", act: 5, actLabel: "CLAIM — BOB", title: "Bob claims his 27.5%", description: "Same beat for Bob. Carol stays at 0.", action: "claim_bob", persona: "bob", focus: "me" },
+  { id: "08", act: 5, actLabel: "CLAIM — ALICE", title: "Alice claims her current ownership share", description: "Persona-signed tx. Lamports move into Alice's devnet balance.", action: "claim_alice", persona: "alice", focus: "me" },
+  { id: "09", act: 5, actLabel: "BOB STATUS", title: "Bob has contribution weight, not claimable revenue yet", description: "The first useful submission is intentionally damped. Bob becomes economically meaningful after enough contribution weight unlocks the contributor pool.", focus: "me" },
   { id: "10", act: 6, actLabel: "EVOLVE", title: "Alice publishes v1.1 with Bob's patch", description: "The Skill Loop motif completes one full rotation. Bob is permanently recorded as a contributor to v1.1.", action: "publish_v1_1", persona: "alice", focus: "skill", activeStage: "EVOLVE" },
 ];
 
@@ -66,7 +66,7 @@ export default function ConsolePage() {
   const [running, setRunning] = useState(false);
   const [aliceSkillId, setAliceSkillId] = useState<string | null>(null);
   const [bobExperienceId, setBobExperienceId] = useState<bigint | null>(null);
-  const [shares, setShares] = useState<any | null>(null);
+  const [ownership, setOwnership] = useState<any | null>(null);
   const [skillData, setSkillData] = useState<any | null>(null);
   const [loopTrigger, setLoopTrigger] = useState(0);
   const [pubkeys, setPubkeys] = useState<PersonaPubkeys | null>(null);
@@ -74,7 +74,7 @@ export default function ConsolePage() {
   const [personasError, setPersonasError] = useState<string | null>(null);
   const [txStatus, setTxStatus] = useState<TxState>("idle");
   const [txSig, setTxSig] = useState<string | undefined>();
-  const prevShares = useRef<number | null>(null);
+  const prevContributorPool = useRef<number | null>(null);
   const step = STEPS[cursor];
   const { cluster, programId } = getChainConfig();
 
@@ -100,12 +100,12 @@ export default function ConsolePage() {
     if (!aliceSkillId) return;
     try {
       const s = await api.skill(aliceSkillId, null);
-      setShares(s);
+      setOwnership(s);
       setSkillData(s);
-      if (prevShares.current != null && s.ledger.totalShares > prevShares.current) {
+      if (prevContributorPool.current != null && s.ledger.contributorPoolBps > prevContributorPool.current) {
         setLoopTrigger((n) => n + 1);
       }
-      prevShares.current = s.ledger.totalShares;
+      prevContributorPool.current = s.ledger.contributorPoolBps;
     } catch {}
   }, [aliceSkillId]);
 
@@ -160,11 +160,11 @@ export default function ConsolePage() {
       setLog([{ ts: Date.now(), text: "reset", kind: "info" }]);
       setAliceSkillId(null);
       setBobExperienceId(null);
-      setShares(null);
+      setOwnership(null);
       setSkillData(null);
       setTxStatus("idle");
       setTxSig(undefined);
-      prevShares.current = null;
+      prevContributorPool.current = null;
     } finally {
       setRunning(false);
     }
@@ -281,7 +281,7 @@ export default function ConsolePage() {
       const nextSnapshotId = BigInt(poolAcct.snapshotId.toString()) + 1n;
       const fresh = await api.skill(skillId, null);
       const holders = (fresh.holders ?? [])
-        .filter((h: any) => h.shares > 0)
+        .filter((h: any) => h.ownershipBps > 0)
         .map((h: any) => new PublicKey(h.holder));
       if (!holders.length) throw new Error("no shareholders to settle");
 
@@ -446,20 +446,19 @@ export default function ConsolePage() {
               <SkillLoopMotif size={180} active={step.activeStage ?? null} spinTrigger={loopTrigger} dense className="self-center md:self-start" />
             </div>
 
-            {shares ? (
+            {ownership ? (
               <div>
-                <div className="caption mb-2">LIVE CAP TABLE · ALICE'S SKILL</div>
+                <div className="caption mb-2">LIVE OWNERSHIP · ALICE'S SKILL</div>
                 <StackedShareBar
-                  slices={shares.holders.map((h: any) => ({ holder: h.holder, shares: h.shares, isAuthor: h.isAuthor }))}
-                  totalShares={shares.ledger.totalShares}
-                  minAuthorRatioBps={shares.ledger.minAuthorRatioBps}
+                  slices={ownership.holders.map((h: any) => ({ holder: h.holder, ownershipPct: h.ownershipPct, isAuthor: h.isAuthor }))}
+                  minAuthorRatioBps={ownership.ledger.minAuthorRatioBps}
                   annotate={false}
                 />
                 <div className="mt-3 grid grid-cols-1 gap-3 font-mono text-[11px] sm:grid-cols-2 xl:grid-cols-4">
-                  {shares.holders.slice(0, 4).map((h: any) => (
+                  {ownership.holders.slice(0, 4).map((h: any) => (
                     <div key={h.holder} className="flex items-center gap-2 min-w-0">
                       <MonoId value={h.holder} />
-                      <span className="ml-auto">{h.shares}</span>
+                      <span className="ml-auto">{h.ownershipPct.toFixed(2)}%</span>
                     </div>
                   ))}
                 </div>

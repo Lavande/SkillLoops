@@ -37,7 +37,7 @@ export default function SkillPage({ params }: PageProps) {
   const [signing, setSigning] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [loopTrigger, setLoopTrigger] = useState(0);
-  const prevShares = useRef<number | null>(null);
+  const prevContributorPool = useRef<number | null>(null);
   const [txStatus, setTxStatus] = useState<"idle" | "signing" | "confirming" | "confirmed" | "error">("idle");
   const [txSig, setTxSig] = useState<string | undefined>();
 
@@ -45,10 +45,10 @@ export default function SkillPage({ params }: PageProps) {
     try {
       const d = await api.skill(params.id, wallet);
       setData(d);
-      if (prevShares.current != null && d.ledger.totalShares > prevShares.current) {
+      if (prevContributorPool.current != null && d.ledger.contributorPoolBps > prevContributorPool.current) {
         setLoopTrigger((n) => n + 1);
       }
-      prevShares.current = d.ledger.totalShares;
+      prevContributorPool.current = d.ledger.contributorPoolBps;
     } catch (e: any) {
       setErr(e?.message ?? "load failed");
     }
@@ -66,7 +66,7 @@ export default function SkillPage({ params }: PageProps) {
     return data.holders.map((h: any) => ({
       holder: h.holder,
       label: h.isAuthor ? `${truncateId(h.holder)} · AUTHOR` : truncateId(h.holder),
-      shares: h.shares,
+      ownershipPct: h.ownershipPct,
       isAuthor: h.isAuthor,
     }));
   }, [data]);
@@ -100,7 +100,7 @@ export default function SkillPage({ params }: PageProps) {
       const poolAcct = await (program.account as any).revenuePool.fetch(poolPda);
       const nextSnapshotId = BigInt(poolAcct.snapshotId.toString()) + 1n;
       const holders = (data.holders ?? [])
-        .filter((h: any) => h.shares > 0)
+        .filter((h: any) => h.ownershipBps > 0)
         .map((h: any) => new PublicKey(h.holder));
       const result = await chainSettle(conn, w as any, {
         programId, skill: skillPk, nextSnapshotId, holders,
@@ -187,8 +187,8 @@ export default function SkillPage({ params }: PageProps) {
       </section>
 
       {/* Cap table */}
-      <LabeledBox title="CAP TABLE" code="§ shares" className="col-span-12" right={<span>{ledger.totalShares.toLocaleString()} total · floor {(ledger.minAuthorRatioBps / 100).toFixed(0)}%</span>}>
-        <StackedShareBar slices={slices} totalShares={ledger.totalShares} minAuthorRatioBps={ledger.minAuthorRatioBps} />
+      <LabeledBox title="CAP TABLE" code="§ ownership" className="col-span-12" right={<span>author {ledger.authorOwnershipPct.toFixed(1)}% · pool {ledger.contributorPoolPct.toFixed(1)}% · floor {(ledger.minAuthorRatioBps / 100).toFixed(0)}%</span>}>
+        <StackedShareBar slices={slices} minAuthorRatioBps={ledger.minAuthorRatioBps} />
       </LabeledBox>
 
       {/* Revenue panel */}
@@ -274,7 +274,7 @@ function ExperienceRow({ exp }: { exp: any }) {
           <MonoId value={exp.contributor} prefix="by" />
           <Chip tone={tone}>{exp.status}</Chip>
           {exp.contributionScore ? <Chip tone="ink">{exp.contributionScore} / 50</Chip> : null}
-          {exp.sharesMinted ? <span className="font-mono text-[11px] text-accent">+{exp.sharesMinted} shares</span> : null}
+          {exp.ownershipDeltaPct ? <span className="font-mono text-[11px] text-accent">+{exp.ownershipDeltaPct.toFixed(2)}% ownership</span> : null}
         </div>
         <div className="flex items-center gap-3 self-start sm:self-auto">
           <span className="caption">{new Date(exp.submittedAt * 1000).toLocaleTimeString()}</span>

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getDb } from "@/lib/db";
-import { ApiError, caller, guarded } from "@/lib/api-helpers";
+import { ApiError, caller, guarded, ownershipPct } from "@/lib/api-helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const r = db.prepare(`SELECT * FROM experiences WHERE experience_id = ?`).get(expId) as any;
     if (!r) throw new ApiError(404, "experience_not_found");
     const isContributor = self === r.contributor;
-    const isShareholder = !!self && ((db.prepare(`SELECT shares FROM share_accounts WHERE holder = ? AND skill_id = ?`).get(self, r.skill_id) as any)?.shares ?? 0) > 0;
+    const isShareholder = !!self && ((db.prepare(`SELECT contribution_weight FROM share_accounts WHERE holder = ? AND skill_id = ?`).get(self, r.skill_id) as any)?.contribution_weight ?? 0) > 0;
     const base = {
       experienceId: r.experience_id,
       skillId: r.skill_id,
@@ -22,7 +22,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       skillVersion: r.skill_version,
       status: r.status,
       contributionScore: r.contribution_score,
-      sharesMinted: r.shares_minted,
+      contributionWeightDelta: r.contribution_weight_delta,
+      ownershipDeltaBps: r.ownership_delta_bps,
+      ownershipDeltaPct: r.ownership_delta_bps == null ? null : ownershipPct(r.ownership_delta_bps),
       submittedAt: r.submitted_at,
       evaluatedAt: r.evaluated_at,
       arweaveTxId: r.arweave_tx_id,

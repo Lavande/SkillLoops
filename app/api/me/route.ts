@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getDb } from "@/lib/db";
-import { ApiError, caller, guarded } from "@/lib/api-helpers";
+import { ApiError, caller, guarded, contributorOwnershipBps, ownershipPct } from "@/lib/api-helpers";
 import { getSolBalance } from "@/lib/services";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const db = getDb();
     const published = db
       .prepare(
-        `SELECT s.*, l.total_shares, l.contributor_count FROM skills s JOIN share_ledgers l ON l.skill_id = s.skill_id WHERE s.author = ? ORDER BY s.created_at DESC`
+        `SELECT s.*, l.author_ownership_bps, l.contributor_pool_bps, l.contributor_count FROM skills s JOIN share_ledgers l ON l.skill_id = s.skill_id WHERE s.author = ? ORDER BY s.created_at DESC`
       )
       .all(self) as any[];
     const subs = db
@@ -22,7 +22,9 @@ export async function GET(req: NextRequest) {
       .all(self) as any[];
     const holdings = db
       .prepare(
-        `SELECT a.*, s.name AS skill_name, s.author, l.total_shares FROM share_accounts a JOIN skills s ON s.skill_id = a.skill_id JOIN share_ledgers l ON l.skill_id = a.skill_id WHERE a.holder = ? AND a.shares > 0 ORDER BY a.shares DESC`
+        `SELECT a.*, s.name AS skill_name, s.author, l.author_ownership_bps, l.contributor_pool_bps, l.total_contributor_weight
+         FROM share_accounts a JOIN skills s ON s.skill_id = a.skill_id JOIN share_ledgers l ON l.skill_id = a.skill_id
+         WHERE a.holder = ? AND a.contribution_weight > 0 ORDER BY a.contribution_weight DESC`
       )
       .all(self) as any[];
     const contributions = db
@@ -44,7 +46,10 @@ export async function GET(req: NextRequest) {
         category: r.category,
         currentVersion: r.current_version,
         subscriberCount: r.subscriber_count,
-        totalShares: r.total_shares,
+        authorOwnershipBps: r.author_ownership_bps,
+        authorOwnershipPct: ownershipPct(r.author_ownership_bps),
+        contributorPoolBps: r.contributor_pool_bps,
+        contributorPoolPct: ownershipPct(r.contributor_pool_bps),
         contributorCount: r.contributor_count,
         subscriptionPrice: r.subscription_price,
       })),
@@ -56,21 +61,33 @@ export async function GET(req: NextRequest) {
         expiryTime: r.expiry_time,
         isActive: !!r.is_active,
       })),
-      holdings: holdings.map((r) => ({
-        skillId: r.skill_id,
-        skillName: r.skill_name,
-        shares: r.shares,
-        totalShares: r.total_shares,
-        lockUntil: r.lock_until,
-        isAuthor: r.holder === r.author,
-      })),
+      holdings: holdings.map((r) => {
+        const isAuthor = r.holder === r.author;
+        const ownershipBps = isAuthor
+          ? r.author_ownership_bps
+          : contributorOwnershipBps({
+              contributorPoolBps: r.contributor_pool_bps,
+              contributionWeight: r.contribution_weight,
+              totalContributorWeight: r.total_contributor_weight,
+            });
+        return {
+          skillId: r.skill_id,
+          skillName: r.skill_name,
+          ownershipBps,
+          ownershipPct: ownershipPct(ownershipBps),
+          lockUntil: r.lock_until,
+          isAuthor,
+        };
+      }),
       contributions: contributions.map((r) => ({
         experienceId: r.experience_id,
         skillId: r.skill_id,
         skillName: r.skill_name,
         status: r.status,
         contributionScore: r.contribution_score,
-        sharesMinted: r.shares_minted,
+        contributionWeightDelta: r.contribution_weight_delta,
+        ownershipDeltaBps: r.ownership_delta_bps,
+        ownershipDeltaPct: r.ownership_delta_bps == null ? null : ownershipPct(r.ownership_delta_bps),
         submittedAt: r.submitted_at,
         evaluatedAt: r.evaluated_at,
         arweaveTxId: r.arweave_tx_id,

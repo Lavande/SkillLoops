@@ -139,7 +139,8 @@ function MePageInner() {
             { k: "category", label: "category" },
             { k: "currentVersion", label: "ver" },
             { k: "subscriberCount", label: "subs" },
-            { k: "totalShares", label: "shares" },
+            { k: "authorOwnershipPct", label: "author", render: (r: any) => `${r.authorOwnershipPct.toFixed(1)}%` },
+            { k: "contributorPoolPct", label: "pool", render: (r: any) => `${r.contributorPoolPct.toFixed(1)}%` },
             { k: "subscriptionPrice", label: "price", render: (r: any) => fmtSol(r.subscriptionPrice, 3) },
           ]} />}
         </LabeledBox>
@@ -158,12 +159,10 @@ function MePageInner() {
       ) : null}
 
       {tab === "Holdings" ? (
-        <LabeledBox title="SHARE HOLDINGS" className="col-span-12">
-          {data.holdings.length === 0 ? <Empty text="No nonzero share positions yet. Subscribe and contribute to earn shares." /> : <Tbl rows={data.holdings} cols={[
+        <LabeledBox title="OWNERSHIP HOLDINGS" className="col-span-12">
+          {data.holdings.length === 0 ? <Empty text="No nonzero ownership positions yet. Subscribe and contribute to earn ownership." /> : <Tbl rows={data.holdings} cols={[
             { k: "skillName", label: "skill", render: (r: any) => <Link className="accent-underline" href={`/skill/${r.skillId}`}>{r.skillName}</Link> },
-            { k: "shares", label: "shares" },
-            { k: "totalShares", label: "total" },
-            { k: "pct", label: "%", render: (r: any) => r.totalShares ? ((r.shares / r.totalShares) * 100).toFixed(2) + "%" : "—" },
+            { k: "ownershipPct", label: "ownership", render: (r: any) => `${r.ownershipPct.toFixed(2)}%` },
             { k: "lockUntil", label: "unlocks", render: (r: any) => r.lockUntil ? new Date(r.lockUntil * 1000).toLocaleDateString() : "—" },
           ]} />}
         </LabeledBox>
@@ -176,7 +175,7 @@ function MePageInner() {
             { k: "skillName", label: "skill", render: (r: any) => <Link className="accent-underline" href={`/skill/${r.skillId}`}>{r.skillName}</Link> },
             { k: "status", label: "status", render: (r: any) => <Chip tone={r.status === "Evaluated" ? "accent" : r.status === "Pending" ? "muted" : "ghost"}>{r.status}</Chip> },
             { k: "contributionScore", label: "score", render: (r: any) => r.contributionScore ? `${r.contributionScore}/50` : "—" },
-            { k: "sharesMinted", label: "minted", render: (r: any) => r.sharesMinted ? `+${r.sharesMinted}` : "—" },
+            { k: "ownershipDeltaPct", label: "ownership", render: (r: any) => r.ownershipDeltaPct ? `+${r.ownershipDeltaPct.toFixed(2)}%` : "—" },
             { k: "submittedAt", label: "submitted", render: (r: any) => new Date(r.submittedAt * 1000).toLocaleString() },
           ]} />}
         </LabeledBox>

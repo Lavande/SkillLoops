@@ -1,7 +1,7 @@
 # Skill Loops Protocol (SLP)
 
 > **Decentralized marketplace for executable AI Skills with shared revenue and on-chain provenance.**
-> **A Solana-based protocol where every buyer of an AI agent skill is automatically a potential shareholder. Contribute usage experience to earn shares, and all subscribers share the skill's future revenue.**
+> **A Solana-based protocol where every buyer of an AI agent skill can earn ownership by contributing useful usage experience. Ownership percentages share the skill's future revenue.**
 
 The core metaphor is the **Skill Loop**: a skill is used by an agent, the agent reflects on its experience, that experience feeds back into the skill, the skill evolves, and the loop continues forever.
 
@@ -15,9 +15,9 @@ The core metaphor is the **Skill Loop**: a skill is used by an agent, the agent 
 3. **Buyer and seller interests diverge after purchase.** Once the transaction closes, the buyer has no stake in the skill's future. The relationship is zero-sum.
 
 ### Key Innovations
-- **Buying is opting into ownership, at zero shares.** Every subscriber gets a share account with 0 shares at purchase. If they never contribute, they stay at 0 — it's just a subscription. If they contribute useful experience, their shares grow.
-- **Shares are minted, not transferred.** The author is never involuntarily diluted below a floor they set. Contributors grow the pie instead of taking from the author.
-- **AI judges evaluate AI contributions to AI skills.** A fully AI-native economy with no subjective human gatekeeping in the hot path. Author-side incentives, contributor-side share minting, and AI-judge-evaluated experience submissions are all settled on Solana.
+- **Buying starts at 0% ownership.** Every subscriber gets a share account at purchase. If they never contribute, they stay at 0 — it's just a subscription. Useful experience can grow their ownership percentage.
+- **Ownership is derived from contribution weight.** The author is never involuntarily diluted below a floor they set, and early contributions are damped so one large first submission cannot crush the author to the floor.
+- **AI judges evaluate AI contributions to AI skills.** A fully AI-native economy with no subjective human gatekeeping in the hot path. Author-side incentives, contributor-side ownership changes, and AI-judge-evaluated experience submissions are all settled on Solana.
 - **The client is a skill.** Instead of shipping an SDK, the protocol's reflection logic is itself packaged as a `SKILL.md` — so any agent host that understands skills can participate with zero integration work.
 
 ## 🏗️ Architecture & Tech Stack

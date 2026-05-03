@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getDb } from "@/lib/db";
-import { guarded } from "@/lib/api-helpers";
+import { guarded, ownershipPct } from "@/lib/api-helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     const db = getDb();
     let rows = db
       .prepare(
-        `SELECT s.*, l.total_shares, l.author_shares, l.contributor_count
+        `SELECT s.*, l.author_ownership_bps, l.contributor_pool_bps, l.contributor_count
          FROM skills s JOIN share_ledgers l ON l.skill_id = s.skill_id`
       )
       .all() as any[];
@@ -48,8 +48,10 @@ function shape(r: any) {
     createdAt: r.created_at,
     subscriberCount: r.subscriber_count,
     totalRevenue: r.total_revenue,
-    totalShares: r.total_shares,
-    authorShares: r.author_shares,
+    authorOwnershipBps: r.author_ownership_bps,
+    authorOwnershipPct: ownershipPct(r.author_ownership_bps),
+    contributorPoolBps: r.contributor_pool_bps,
+    contributorPoolPct: ownershipPct(r.contributor_pool_bps),
     contributorCount: r.contributor_count,
   };
 }

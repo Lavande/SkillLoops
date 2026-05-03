@@ -24,7 +24,8 @@ export async function GET(_req: NextRequest, { params }: { params: { skillId: st
         periodStart: h.period_start,
         periodEnd: h.period_end,
         revenue: h.period_revenue,
-        snapshotTotalShares: h.snapshot_total_shares,
+        snapshotAuthorOwnershipBps: h.snapshot_author_ownership_bps,
+        snapshotContributorPoolBps: h.snapshot_contributor_pool_bps,
       })),
     };
   });

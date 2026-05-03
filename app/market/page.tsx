@@ -103,7 +103,7 @@ export default function MarketPage() {
 }
 
 function SkillCard({ r }: { r: any }) {
-  const authorPct = r.totalShares > 0 ? (r.authorShares / r.totalShares) * 100 : 100;
+  const authorPct = r.authorOwnershipPct ?? 100;
   return (
     <Link href={`/skill/${r.skillId}`} className="block">
       <article className="border border-ink bg-paper hover:bg-paper-raised transition-colors relative">

@@ -7,13 +7,12 @@ import { cn } from "@/lib/cn";
 export interface ShareSlice {
   holder: string;
   label?: string;
-  shares: number;
+  ownershipPct: number;
   isAuthor?: boolean;
 }
 
 interface Props {
   slices: ShareSlice[];
-  totalShares: number;
   minAuthorRatioBps: number;
   height?: number;
   className?: string;
@@ -26,13 +25,14 @@ const TONES = ["#0B0B0B", "#FF5B1F", "#6B675E", "#1A1A1A", "#D9D4C7", "#8B8378",
 
 export function StackedShareBar({
   slices,
-  totalShares,
   minAuthorRatioBps,
   height = 44,
   className,
   annotate = true,
 }: Props) {
-  const sorted = [...slices].sort((a, b) => (b.isAuthor ? 1 : 0) - (a.isAuthor ? 1 : 0) || b.shares - a.shares);
+  const sorted = [...slices].sort(
+    (a, b) => (b.isAuthor ? 1 : 0) - (a.isAuthor ? 1 : 0) || b.ownershipPct - a.ownershipPct
+  );
   const floorPct = minAuthorRatioBps / 100; // bps→%
 
   return (
@@ -40,8 +40,8 @@ export function StackedShareBar({
       <div className="relative border border-ink bg-paper-raised" style={{ height }}>
         <div className="relative flex h-full w-full">
           {sorted.map((s, i) => {
-            const pct = totalShares > 0 ? (s.shares / totalShares) * 100 : 0;
-            const color = s.isAuthor ? INK : s.shares === 0 ? "transparent" : TONES[(i + 1) % TONES.length] ?? ACCENT;
+            const pct = Math.max(0, Math.min(100, s.ownershipPct));
+            const color = s.isAuthor ? INK : pct === 0 ? "transparent" : TONES[(i + 1) % TONES.length] ?? ACCENT;
             return (
               <motion.div
                 key={s.holder}
@@ -50,7 +50,7 @@ export function StackedShareBar({
                 transition={{ type: "spring", stiffness: 180, damping: 22 }}
                 className="h-full border-r border-ink last:border-r-0 relative overflow-hidden"
                 style={{ background: color }}
-                title={`${s.label ?? truncateId(s.holder)} · ${s.shares} shares · ${pct.toFixed(2)}%`}
+                title={`${s.label ?? truncateId(s.holder)} · ${pct.toFixed(2)}% ownership`}
               >
                 {pct > 6 ? (
                   <div className="absolute inset-0 flex items-center px-2 font-mono text-[10px] uppercase tracking-[0.14em]" style={{ color: s.isAuthor ? "#F4F1EA" : pct > 10 ? "#F4F1EA" : "#0B0B0B" }}>
@@ -77,8 +77,8 @@ export function StackedShareBar({
       {annotate ? (
         <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1 font-mono text-[11px]">
           {sorted.map((s, i) => {
-            const pct = totalShares > 0 ? (s.shares / totalShares) * 100 : 0;
-            const color = s.isAuthor ? INK : s.shares === 0 ? "transparent" : TONES[(i + 1) % TONES.length] ?? ACCENT;
+            const pct = Math.max(0, Math.min(100, s.ownershipPct));
+            const color = s.isAuthor ? INK : pct === 0 ? "transparent" : TONES[(i + 1) % TONES.length] ?? ACCENT;
             return (
               <li key={s.holder} className="flex items-center gap-2 min-w-0">
                 <span
@@ -90,7 +90,7 @@ export function StackedShareBar({
                   {s.isAuthor ? " · AUTHOR" : ""}
                 </span>
                 <span className="ml-auto text-muted">
-                  {s.shares.toLocaleString()} · {pct.toFixed(1)}%
+                  {pct.toFixed(1)}%
                 </span>
               </li>
             );
