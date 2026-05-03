@@ -383,9 +383,9 @@ export function evaluateContributionOwnership({
   const maxPoolBps = OWNERSHIP_BPS - ledger.min_author_ratio_bps;
   const pointsPer100Bps = ledger.points_per_100bps || POINTS_PER_100BPS_DEFAULT;
   const targetPoolBps = Math.min(maxPoolBps, Math.floor(newTotalContributorWeight / pointsPer100Bps) * 100);
-  const newContributorPoolBps = Math.min(
-    targetPoolBps,
-    ledger.contributor_pool_bps + ledger.max_pool_increase_per_evaluation_bps,
+  const newContributorPoolBps = Math.max(
+    ledger.contributor_pool_bps,
+    Math.min(targetPoolBps, ledger.contributor_pool_bps + ledger.max_pool_increase_per_evaluation_bps),
   );
   const wasZero = contributor.contribution_weight === 0;
   const newLedger: OwnershipLedgerState = {
