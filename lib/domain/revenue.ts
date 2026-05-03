@@ -90,6 +90,13 @@ export function computeOwnershipClaims({
     return holders.map((holder) => ({ holder: holder.holder, amount: 0 }));
   }
 
+  if (totalContributorWeight <= 0 || contributorPoolBps <= 0) {
+    return holders.map((holder) => ({
+      holder: holder.holder,
+      amount: holder.role === "author" ? periodRevenue : 0,
+    }));
+  }
+
   const authorClaim = Math.floor((periodRevenue * authorOwnershipBps) / OWNERSHIP_BPS);
   const contributorRevenue = periodRevenue - authorClaim;
 
@@ -100,6 +107,7 @@ export function computeOwnershipClaims({
 
     if (
       contributorRevenue <= 0 ||
+      contributorPoolBps <= 0 ||
       totalContributorWeight <= 0 ||
       holder.contributionWeight <= 0
     ) {
