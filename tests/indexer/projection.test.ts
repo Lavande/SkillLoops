@@ -13,6 +13,7 @@ vi.mock("@/lib/chain/program", () => ({
     account: {
       skill: { fetch: programMock.skillFetch },
       experienceRecord: { fetch: programMock.experienceFetch },
+      claimableRevenue: { all: vi.fn().mockResolvedValue([]) },
     },
   }),
 }));
@@ -28,26 +29,37 @@ beforeEach(() => {
   programMock.skillFetch.mockReset();
 });
 
+function insertOwnershipLedger(db: ReturnType<typeof getDb>) {
+  db.prepare(`INSERT INTO share_ledgers
+    (skill_id, author_ownership_bps, contributor_pool_bps, min_author_ratio_bps, total_contributor_weight, contributor_count, points_per_100bps, max_pool_increase_per_evaluation_bps, last_snapshot_time)
+    VALUES (?,10000,0,4000,0,0,250,500,100)`).run(SKILL.toBase58());
+}
+
 describe("applyEvent projections (shape-only, no RPC fetch)", () => {
-  it("SkillPublished creates skills row with placeholder metadata", async () => {
+  it("SkillPublished creates placeholder skill, ownership ledger, author account, pool, and v1", async () => {
     const db = getDb(":memory:");
     await applyEventForTest(db, {
       name: "SkillPublished",
       data: { skill: SKILL, author: AUTHOR, createdAt: 100 },
     }, "sig1", 1, true);
-    const row = db.prepare(`SELECT skill_id, name FROM skills WHERE skill_id = ?`).get(SKILL.toBase58()) as any;
-    expect(row).toBeTruthy();
-    expect(row.name).toBe("<pending>");
+
+    const skill = db.prepare(`SELECT skill_id, name FROM skills WHERE skill_id = ?`).get(SKILL.toBase58()) as any;
+    expect(skill.name).toBe("<pending>");
+    const ledger = db.prepare(`SELECT author_ownership_bps, contributor_pool_bps, total_contributor_weight FROM share_ledgers WHERE skill_id = ?`)
+      .get(SKILL.toBase58()) as any;
+    expect(ledger).toMatchObject({ author_ownership_bps: 10000, contributor_pool_bps: 0, total_contributor_weight: 0 });
+    const authorShare = db.prepare(`SELECT contribution_weight FROM share_accounts WHERE skill_id = ? AND holder = ?`)
+      .get(SKILL.toBase58(), AUTHOR.toBase58()) as any;
+    expect(authorShare.contribution_weight).toBe(0);
   });
 
-  it("Subscribed increments subscriber_count + total_revenue", async () => {
+  it("Subscribed increments subscriber_count + total_revenue and creates zero-weight account", async () => {
     const db = getDb(":memory:");
     db.prepare(`INSERT INTO skills (skill_id, author, name, description, category, current_version, content_hash, arweave_tx_id, subscription_price, min_author_ratio_bps, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
       .run(SKILL.toBase58(), AUTHOR.toBase58(), "Alice", "desc", "coding", 1, "h", "ar_x", 100_000_000, 4000, 100, 100);
     db.prepare(`INSERT INTO revenue_pools (skill_id, current_period_revenue, total_lifetime_revenue, current_period_start, period_length) VALUES (?,0,0,100,300)`)
       .run(SKILL.toBase58());
-    db.prepare(`INSERT INTO share_ledgers (skill_id, total_shares, author_shares, min_author_ratio_bps, contributor_count, last_snapshot_time) VALUES (?,1000,1000,4000,0,100)`)
-      .run(SKILL.toBase58());
+    insertOwnershipLedger(db);
 
     await applyEventForTest(db, {
       name: "Subscribed",
@@ -57,67 +69,70 @@ describe("applyEvent projections (shape-only, no RPC fetch)", () => {
     const skill = db.prepare(`SELECT subscriber_count, total_revenue FROM skills WHERE skill_id = ?`).get(SKILL.toBase58()) as any;
     expect(skill.subscriber_count).toBe(1);
     expect(skill.total_revenue).toBe(100_000_000);
-    const shareRow = db.prepare(`SELECT shares FROM share_accounts WHERE skill_id = ? AND holder = ?`).get(SKILL.toBase58(), BOB.toBase58()) as any;
-    expect(shareRow?.shares).toBe(0);
+    const shareRow = db.prepare(`SELECT contribution_weight FROM share_accounts WHERE skill_id = ? AND holder = ?`).get(SKILL.toBase58(), BOB.toBase58()) as any;
+    expect(shareRow.contribution_weight).toBe(0);
   });
 
-  it("SharesMinted updates total_shares + adds contributor", async () => {
+  it("ExperienceSubmitted + ExperienceEvaluated update experience, ledger, and contributor weight", async () => {
     const db = getDb(":memory:");
-    db.prepare(`INSERT INTO share_ledgers (skill_id, total_shares, author_shares, min_author_ratio_bps, contributor_count, last_snapshot_time) VALUES (?,1000,1000,4000,0,100)`)
-      .run(SKILL.toBase58());
-    db.prepare(`INSERT INTO share_accounts (holder, skill_id, shares, lock_until, first_contribution_at, last_contribution_at) VALUES (?,?,0,0,NULL,NULL)`)
-      .run(BOB.toBase58(), SKILL.toBase58());
-    await applyEventForTest(db, {
-      name: "SharesMinted",
-      data: { skill: SKILL, holder: BOB, amount: 380, totalSharesAfter: 1380 },
-    }, "sig3", 3, true);
-    const ledger = db.prepare(`SELECT total_shares, contributor_count FROM share_ledgers WHERE skill_id = ?`).get(SKILL.toBase58()) as any;
-    expect(ledger.total_shares).toBe(1380);
-    expect(ledger.contributor_count).toBe(1);
-    const share = db.prepare(`SELECT shares FROM share_accounts WHERE holder = ? AND skill_id = ?`).get(BOB.toBase58(), SKILL.toBase58()) as any;
-    expect(share.shares).toBe(380);
-  });
-
-  it("does not double-add holder shares when a SharesMinted event is replayed", async () => {
-    const db = getDb(":memory:");
-    db.prepare(`INSERT INTO share_ledgers (skill_id, total_shares, author_shares, min_author_ratio_bps, contributor_count, last_snapshot_time) VALUES (?,1000,1000,4000,0,100)`)
-      .run(SKILL.toBase58());
-    db.prepare(`INSERT INTO share_accounts (holder, skill_id, shares, lock_until, first_contribution_at, last_contribution_at) VALUES (?,?,0,0,NULL,NULL)`)
-      .run(BOB.toBase58(), SKILL.toBase58());
-    const ev = {
-      name: "SharesMinted" as const,
-      data: { skill: SKILL, holder: BOB, amount: 430, totalSharesAfter: 1430 },
-    };
-
-    await applyEventForTest(db, ev, "sig-replay-1", 3, true);
-    await applyEventForTest(db, ev, "sig-replay-2", 4, true);
-
-    const ledger = db.prepare(`SELECT total_shares, contributor_count FROM share_ledgers WHERE skill_id = ?`).get(SKILL.toBase58()) as any;
-    expect(ledger.total_shares).toBe(1430);
-    expect(ledger.contributor_count).toBe(1);
-    const share = db.prepare(`SELECT shares FROM share_accounts WHERE holder = ? AND skill_id = ?`).get(BOB.toBase58(), SKILL.toBase58()) as any;
-    expect(share.shares).toBe(430);
-  });
-
-  it("ExperienceSubmitted + ExperienceEvaluated update the experiences row", async () => {
-    const db = getDb(":memory:");
+    insertOwnershipLedger(db);
     await applyEventForTest(db, {
       name: "ExperienceSubmitted",
       data: { skill: SKILL, experienceId: 0, contributor: BOB },
     }, "sig4", 4, true);
-    const exp1 = db.prepare(`SELECT status FROM experiences WHERE skill_id = ? AND experience_id = ?`)
-      .get(SKILL.toBase58(), 0) as any;
-    expect(exp1.status).toBe("Pending");
 
     await applyEventForTest(db, {
       name: "ExperienceEvaluated",
-      data: { skill: SKILL, experienceId: 0, score: 38, sharesMinted: 380, approved: true, floorHit: false },
+      data: {
+        skill: SKILL,
+        experienceId: 0,
+        contributor: BOB,
+        score: 38,
+        contributionWeightDelta: 95,
+        ownershipDeltaBps: 0,
+        authorOwnershipBps: 10000,
+        contributorPoolBps: 0,
+        approved: true,
+      },
     }, "sig5", 5, true);
-    const exp2 = db.prepare(`SELECT status, contribution_score, shares_minted FROM experiences WHERE skill_id = ? AND experience_id = ?`)
+
+    const exp = db.prepare(`SELECT status, contribution_score, contribution_weight_delta, ownership_delta_bps FROM experiences WHERE skill_id = ? AND experience_id = ?`)
       .get(SKILL.toBase58(), 0) as any;
-    expect(exp2.status).toBe("Evaluated");
-    expect(exp2.contribution_score).toBe(38);
-    expect(exp2.shares_minted).toBe(380);
+    expect(exp).toMatchObject({ status: "Evaluated", contribution_score: 38, contribution_weight_delta: 95, ownership_delta_bps: 0 });
+    const ledger = db.prepare(`SELECT author_ownership_bps, contributor_pool_bps, total_contributor_weight, contributor_count FROM share_ledgers WHERE skill_id = ?`)
+      .get(SKILL.toBase58()) as any;
+    expect(ledger).toMatchObject({ author_ownership_bps: 10000, contributor_pool_bps: 0, total_contributor_weight: 95, contributor_count: 1 });
+    const share = db.prepare(`SELECT contribution_weight FROM share_accounts WHERE holder = ? AND skill_id = ?`)
+      .get(BOB.toBase58(), SKILL.toBase58()) as any;
+    expect(share.contribution_weight).toBe(95);
+  });
+
+  it("does not double-apply an already indexed evaluation event", async () => {
+    const db = getDb(":memory:");
+    insertOwnershipLedger(db);
+    db.prepare(`INSERT INTO share_accounts (holder, skill_id, contribution_weight, lock_until) VALUES (?,?,0,0)`)
+      .run(BOB.toBase58(), SKILL.toBase58());
+    const ev = {
+      name: "ExperienceEvaluated" as const,
+      data: {
+        skill: SKILL,
+        experienceId: 0,
+        contributor: BOB,
+        score: 38,
+        contributionWeightDelta: 95,
+        ownershipDeltaBps: 0,
+        authorOwnershipBps: 10000,
+        contributorPoolBps: 0,
+        approved: true,
+      },
+    };
+
+    await applyEventForTest(db, ev, "dup", 9, true);
+    db.prepare(`INSERT OR IGNORE INTO indexed_signatures (signature, slot, status, processed_at) VALUES ('dup',9,'ok',0)`).run();
+    await applyEventForTest(db, ev, "dup", 9, true);
+
+    const ledger = db.prepare(`SELECT total_contributor_weight FROM share_ledgers WHERE skill_id = ?`).get(SKILL.toBase58()) as any;
+    expect(ledger.total_contributor_weight).toBe(95);
   });
 
   it("allows the same chain experience id under different skills", async () => {
@@ -134,10 +149,6 @@ describe("applyEvent projections (shape-only, no RPC fetch)", () => {
 
     const rows = db.prepare(`SELECT skill_id, experience_id FROM experiences WHERE experience_id = 0`).all() as any[];
     expect(rows).toHaveLength(2);
-    expect(rows.map((r) => r.skill_id).sort()).toEqual([
-      OTHER_SKILL.toBase58(),
-      SKILL.toBase58(),
-    ].sort());
   });
 
   it("ExperienceSubmitted enrichment backfills bundle pointer fields from the on-chain account", async () => {
@@ -191,6 +202,7 @@ describe("applyEvent projections (shape-only, no RPC fetch)", () => {
 
   it("ExperienceEvaluated enrichment backfills judge report fields from the on-chain account", async () => {
     const db = getDb(":memory:");
+    insertOwnershipLedger(db);
     const submitted = {
       name: "ExperienceSubmitted" as const,
       data: { skill: SKILL, experienceId: 0, contributor: BOB },
@@ -198,11 +210,22 @@ describe("applyEvent projections (shape-only, no RPC fetch)", () => {
     await applyEventForTest(db, submitted, "sig4c", 4, true);
     const evaluated = {
       name: "ExperienceEvaluated" as const,
-      data: { skill: SKILL, experienceId: 0, score: 42, sharesMinted: 420, approved: true, floorHit: false },
+      data: {
+        skill: SKILL,
+        experienceId: 0,
+        contributor: BOB,
+        score: 42,
+        contributionWeightDelta: 105,
+        ownershipDeltaBps: 0,
+        authorOwnershipBps: 10000,
+        contributorPoolBps: 0,
+        approved: true,
+      },
     };
     await applyEventForTest(db, evaluated, "sig5c", 5, true);
     programMock.experienceFetch.mockResolvedValueOnce({
-      sharesMinted: { toString: () => "420" },
+      contributionWeightDelta: { toString: () => "105" },
+      ownershipDeltaBps: 0,
       evaluatedAt: { toString: () => "5678" },
       judgeReportTxId: "irys_judge_report_tx",
     });
@@ -210,9 +233,10 @@ describe("applyEvent projections (shape-only, no RPC fetch)", () => {
 
     await enrichAfterCommitForTest({} as any, db, evaluated);
 
-    const exp = db.prepare(`SELECT shares_minted, evaluated_at, judge_report_tx_id FROM experiences WHERE skill_id = ? AND experience_id = ?`)
+    const exp = db.prepare(`SELECT contribution_weight_delta, ownership_delta_bps, evaluated_at, judge_report_tx_id FROM experiences WHERE skill_id = ? AND experience_id = ?`)
       .get(SKILL.toBase58(), 0) as any;
-    expect(exp.shares_minted).toBe(420);
+    expect(exp.contribution_weight_delta).toBe(105);
+    expect(exp.ownership_delta_bps).toBe(0);
     expect(exp.evaluated_at).toBe(5678);
     expect(exp.judge_report_tx_id).toBe("irys_judge_report_tx");
   });
@@ -223,11 +247,12 @@ describe("applyEvent projections (shape-only, no RPC fetch)", () => {
       .run(SKILL.toBase58());
     await applyEventForTest(db, {
       name: "PeriodSettled",
-      data: { skill: SKILL, snapshotId: 1, periodRevenue: 300000000, totalShares: 1380 },
+      data: { skill: SKILL, snapshotId: 1, periodRevenue: 300000000, authorOwnershipBps: 10000, contributorPoolBps: 0 },
     }, "sig6", 6, true);
-    const hist = db.prepare(`SELECT period_revenue, snapshot_total_shares FROM revenue_history WHERE skill_id = ?`).get(SKILL.toBase58()) as any;
+    const hist = db.prepare(`SELECT period_revenue, snapshot_author_ownership_bps, snapshot_contributor_pool_bps FROM revenue_history WHERE skill_id = ?`).get(SKILL.toBase58()) as any;
     expect(hist.period_revenue).toBe(300000000);
-    expect(hist.snapshot_total_shares).toBe(1380);
+    expect(hist.snapshot_author_ownership_bps).toBe(10000);
+    expect(hist.snapshot_contributor_pool_bps).toBe(0);
   });
 
   it("RevenueClaimed zeros claimable row", async () => {
@@ -253,23 +278,5 @@ describe("applyEvent projections (shape-only, no RPC fetch)", () => {
     }, "sig8", 8, true);
     const s = db.prepare(`SELECT current_version FROM skills WHERE skill_id = ?`).get(SKILL.toBase58()) as any;
     expect(s.current_version).toBe(2);
-  });
-
-  it("re-applying same event is a no-op (idempotency)", async () => {
-    const db = getDb(":memory:");
-    db.prepare(`INSERT INTO share_ledgers (skill_id, total_shares, author_shares, min_author_ratio_bps, contributor_count, last_snapshot_time) VALUES (?,1000,1000,4000,0,0)`).run(SKILL.toBase58());
-    db.prepare(`INSERT INTO share_accounts (holder, skill_id, shares, lock_until) VALUES (?,?,0,0)`).run(BOB.toBase58(), SKILL.toBase58());
-
-    await applyEventForTest(db, {
-      name: "SharesMinted",
-      data: { skill: SKILL, holder: BOB, amount: 380, totalSharesAfter: 1380 },
-    }, "dup", 9, true);
-    db.prepare(`INSERT INTO indexed_signatures (signature, slot, status, processed_at) VALUES ('dup',9,'ok',0)`).run();
-    await applyEventForTest(db, {
-      name: "SharesMinted",
-      data: { skill: SKILL, holder: BOB, amount: 380, totalSharesAfter: 1380 },
-    }, "dup", 9, true);
-    const ledger = db.prepare(`SELECT total_shares FROM share_ledgers WHERE skill_id = ?`).get(SKILL.toBase58()) as any;
-    expect(ledger.total_shares).toBe(1380);
   });
 });

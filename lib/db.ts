@@ -71,16 +71,19 @@ function migrate(db: DB) {
     );
     CREATE TABLE IF NOT EXISTS share_ledgers (
       skill_id TEXT PRIMARY KEY,
-      total_shares INTEGER NOT NULL,
-      author_shares INTEGER NOT NULL,
+      author_ownership_bps INTEGER NOT NULL,
+      contributor_pool_bps INTEGER NOT NULL,
       min_author_ratio_bps INTEGER NOT NULL,
+      total_contributor_weight INTEGER NOT NULL,
       contributor_count INTEGER NOT NULL,
+      points_per_100bps INTEGER NOT NULL,
+      max_pool_increase_per_evaluation_bps INTEGER NOT NULL,
       last_snapshot_time INTEGER NOT NULL
     );
     CREATE TABLE IF NOT EXISTS share_accounts (
       holder TEXT NOT NULL,
       skill_id TEXT NOT NULL,
-      shares INTEGER NOT NULL DEFAULT 0,
+      contribution_weight INTEGER NOT NULL DEFAULT 0,
       lock_until INTEGER NOT NULL DEFAULT 0,
       first_contribution_at INTEGER,
       last_contribution_at INTEGER,
@@ -96,7 +99,8 @@ function migrate(db: DB) {
       bundle_json TEXT NOT NULL,
       status TEXT NOT NULL,
       contribution_score INTEGER,
-      shares_minted INTEGER,
+      contribution_weight_delta INTEGER,
+      ownership_delta_bps INTEGER,
       submitted_at INTEGER NOT NULL,
       evaluated_at INTEGER,
       judge_report_tx_id TEXT,
@@ -109,7 +113,8 @@ function migrate(db: DB) {
       total_lifetime_revenue INTEGER NOT NULL DEFAULT 0,
       current_period_start INTEGER NOT NULL,
       period_length INTEGER NOT NULL,
-      snapshot_total_shares INTEGER NOT NULL DEFAULT 0,
+      snapshot_author_ownership_bps INTEGER NOT NULL DEFAULT 10000,
+      snapshot_contributor_pool_bps INTEGER NOT NULL DEFAULT 0,
       last_settlement_time INTEGER NOT NULL DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS revenue_history (
@@ -118,7 +123,8 @@ function migrate(db: DB) {
       period_start INTEGER NOT NULL,
       period_end INTEGER NOT NULL,
       period_revenue INTEGER NOT NULL,
-      snapshot_total_shares INTEGER NOT NULL
+      snapshot_author_ownership_bps INTEGER NOT NULL,
+      snapshot_contributor_pool_bps INTEGER NOT NULL
     );
     CREATE TABLE IF NOT EXISTS claimable_revenue (
       holder TEXT NOT NULL,
@@ -150,85 +156,6 @@ function migrate(db: DB) {
       status TEXT NOT NULL,
       error_code TEXT,
       processed_at INTEGER NOT NULL
-    );
-  `);
-  migrateExperiencesCompositeKey(db);
-  backfillShareLedgerAuthorFloors(db);
-}
-
-function migrateExperiencesCompositeKey(db: DB) {
-  const columns = db.prepare(`PRAGMA table_info(experiences)`).all() as { name: string; pk: number }[];
-  const pk = columns.filter((c) => c.pk > 0).sort((a, b) => a.pk - b.pk).map((c) => c.name);
-  if (pk.length !== 1 || pk[0] !== "experience_id") return;
-
-  db.exec(`
-    ALTER TABLE experiences RENAME TO experiences_old_global_pk;
-    CREATE TABLE experiences (
-      experience_id INTEGER NOT NULL,
-      skill_id TEXT NOT NULL,
-      contributor TEXT NOT NULL,
-      skill_version INTEGER NOT NULL,
-      content_hash TEXT NOT NULL,
-      arweave_tx_id TEXT NOT NULL,
-      bundle_json TEXT NOT NULL,
-      status TEXT NOT NULL,
-      contribution_score INTEGER,
-      shares_minted INTEGER,
-      submitted_at INTEGER NOT NULL,
-      evaluated_at INTEGER,
-      judge_report_tx_id TEXT,
-      judge_report_json TEXT,
-      PRIMARY KEY (skill_id, experience_id)
-    );
-    INSERT OR IGNORE INTO experiences (
-      experience_id,
-      skill_id,
-      contributor,
-      skill_version,
-      content_hash,
-      arweave_tx_id,
-      bundle_json,
-      status,
-      contribution_score,
-      shares_minted,
-      submitted_at,
-      evaluated_at,
-      judge_report_tx_id,
-      judge_report_json
-    )
-    SELECT
-      experience_id,
-      skill_id,
-      contributor,
-      skill_version,
-      content_hash,
-      arweave_tx_id,
-      bundle_json,
-      status,
-      contribution_score,
-      shares_minted,
-      submitted_at,
-      evaluated_at,
-      judge_report_tx_id,
-      judge_report_json
-    FROM experiences_old_global_pk;
-    DROP TABLE experiences_old_global_pk;
-  `);
-}
-
-function backfillShareLedgerAuthorFloors(db: DB) {
-  db.exec(`
-    UPDATE share_ledgers
-    SET min_author_ratio_bps = (
-      SELECT skills.min_author_ratio_bps
-      FROM skills
-      WHERE skills.skill_id = share_ledgers.skill_id
-    )
-    WHERE EXISTS (
-      SELECT 1
-      FROM skills
-      WHERE skills.skill_id = share_ledgers.skill_id
-        AND skills.min_author_ratio_bps != share_ledgers.min_author_ratio_bps
     );
   `);
 }

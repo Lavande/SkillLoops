@@ -85,23 +85,30 @@ describe("decodeEvents", () => {
 
   it("decodes ExperienceEvaluated", () => {
     const log = encodeEvent("ExperienceEvaluated", {
-      skill: SKILL, experienceId: 0, score: 38, sharesMinted: 380, approved: true, floorHit: false,
+      skill: SKILL,
+      experienceId: 0,
+      contributor: USER,
+      score: 38,
+      contributionWeightDelta: 95,
+      ownershipDeltaBps: 0,
+      authorOwnershipBps: 10000,
+      contributorPoolBps: 0,
+      approved: true,
     });
     const [e] = decodeEvents([log]);
     expect(e.name).toBe("ExperienceEvaluated");
-  });
-
-  it("decodes SharesMinted", () => {
-    const log = encodeEvent("SharesMinted", {
-      skill: SKILL, holder: USER, amount: 380, totalSharesAfter: 1380,
-    });
-    const [e] = decodeEvents([log]);
-    expect(e.name).toBe("SharesMinted");
+    expect(e.data.contributionWeightDelta.toString()).toBe("95");
+    expect(e.data.ownershipDeltaBps).toBe(0);
+    expect(e.data.authorOwnershipBps).toBe(10000);
   });
 
   it("decodes PeriodSettled", () => {
     const log = encodeEvent("PeriodSettled", {
-      skill: SKILL, snapshotId: 1, periodRevenue: 300000000, totalShares: 1380,
+      skill: SKILL,
+      snapshotId: 1,
+      periodRevenue: 300000000,
+      authorOwnershipBps: 10000,
+      contributorPoolBps: 0,
     });
     const [e] = decodeEvents([log]);
     expect(e.name).toBe("PeriodSettled");

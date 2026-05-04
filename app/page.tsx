@@ -27,12 +27,12 @@ export default function Home() {
           <div className="col-span-12 md:col-span-8">
             <h1 className="font-display text-display-1 uppercase tracking-[-0.01em] leading-[0.92]">
               Buying a skill<br />is opting in at<br />
-              <span className="text-accent">zero shares</span>.
+              <span className="text-accent">0% ownership</span>.
             </h1>
             <p className="font-serif text-xl mt-6 leading-[1.35] max-w-xl">
               Skill Loops Protocol is a Solana-based market where every buyer of an AI agent skill is
-              automatically a potential shareholder. Contribute usage experience to earn shares. All
-              shareholders share the skill&apos;s future revenue, forever.
+              automatically eligible to earn ownership. Contribute useful usage experience to grow your
+              percentage of the skill&apos;s future revenue.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Link href="/market"><Btn variant="primary">Enter market</Btn></Link>
@@ -101,7 +101,7 @@ export default function Home() {
               <li>→ AGENT runs a target skill</li>
               <li>→ AGENT reflects, drafts a patch</li>
               <li>→ AI JUDGE scores it on five dimensions</li>
-              <li>→ CONTRACT mints contribution shares</li>
+              <li>→ CONTRACT updates contribution weight</li>
               <li>→ POOL settles revenue to all holders</li>
             </ul>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
@@ -174,7 +174,7 @@ export default function Home() {
             </div>
           </div>
           <div className="px-5 py-3 flex flex-wrap items-center justify-between gap-3 font-mono text-[10px] uppercase tracking-[0.18em] text-muted">
-            <span>OUTCOME · ALICE 100% → 72.5% · BOB 0% → 27.5% · CAROL stays 0% (paid, did not contribute)</span>
+            <span>OUTCOME · ALICE starts at 100% · BOB earns weight first · CAROL stays 0% (paid, did not contribute)</span>
             <span>RUNTIME · ~3 min on stage</span>
           </div>
         </div>
@@ -371,11 +371,11 @@ const SPEC_STRIP = [
 const BEATS = [
   {
     title: "OPT IN AT ZERO",
-    body: "Every subscriber gets a share account with 0 shares at purchase. If they never contribute, they stay at 0 — it's just a subscription. If they contribute useful experience, their shares grow.",
+    body: "Every subscriber gets a share account at 0% ownership. If they never contribute, they stay at 0 — it's just a subscription. If they contribute useful experience, their ownership can grow.",
   },
   {
-    title: "MINT, DON'T TRANSFER",
-    body: "Shares are minted, never transferred. The author is never involuntarily diluted below a floor they set. Contributors grow the pie instead of taking from the author.",
+    title: "WEIGHT, DON'T TRANSFER",
+    body: "Contributions add weight, and ownership is derived from that weight. The author is never involuntarily diluted below a floor they set.",
   },
   {
     title: "AI-SETTLED",
@@ -394,7 +394,7 @@ const LOOP_STEPS = [
   },
   {
     title: "Subscribe",
-    body: "Bob subscribes. A ShareAccount opens at 0 shares. He is on the cap table from second one — without paying for equity.",
+    body: "Bob subscribes. A ShareAccount opens at 0% ownership. He can earn into the cap table by submitting useful experience.",
   },
   {
     title: "Use & fail",
@@ -413,8 +413,8 @@ const LOOP_STEPS = [
     body: "Within ~30s, the AI Judge fetches the bundle, scores 5 dimensions, signs the report and writes it to Arweave for audit.",
   },
   {
-    title: "Mint shares",
-    body: "Score 38/50 → 380 shares minted to Bob, capped so Alice never falls below her 40% floor. The pie animates, not the wallets.",
+    title: "Update ownership",
+    body: "Score 38/50 adds damped contribution weight for Bob. Ownership only moves as the contributor pool grows, capped so Alice never falls below her 40% floor.",
   },
   {
     title: "Distribute & evolve",
@@ -425,8 +425,8 @@ const LOOP_STEPS = [
 const PROGRAMS = [
   { name: "SkillRegistry", desc: "Skill metadata, current version, content hash, Arweave tx id, price.", tag: "1/5" },
   { name: "Subscription", desc: "30-day usage rights for a wallet on a specific skill.", tag: "2/5" },
-  { name: "ShareLedger", desc: "Per-skill cap table. Tracks total shares, author shares, contributor count, floor (in bps).", tag: "3/5" },
-  { name: "Experience", desc: "Buyer contributions, judge scores, share-mint hooks, status machine.", tag: "4/5" },
+  { name: "ShareLedger", desc: "Per-skill cap table. Tracks author ownership, contributor pool, total contribution weight, floor (in bps).", tag: "3/5" },
+  { name: "Experience", desc: "Buyer contributions, judge scores, ownership hooks, status machine.", tag: "4/5" },
   { name: "RevenuePool", desc: "Subscription accumulator. Snapshots and settlements per period.", tag: "5/5" },
 ];
 
@@ -449,7 +449,7 @@ const AUDIENCES = [
   {
     who: "AGENT OPERATORS",
     pitch:
-      "Subscribe to skills your agent already needs. Turn every failure into shares — the more it fails, the more you earn from fixing it.",
+      "Subscribe to skills your agent already needs. Turn every failure into ownership upside by submitting useful fixes.",
     cta: "Browse the market",
     href: "/market",
   },
@@ -488,7 +488,7 @@ const ROADMAP: {
     priority: "P1",
     items: [
       "Kleros-style arbitration",
-      "Secondary market for post-lock shares",
+      "Secondary market for post-lock ownership positions",
       "Native Phantom deep-link signing",
       "Agent-to-agent economic layer",
     ],
@@ -522,7 +522,7 @@ const ROADMAP: {
 const PITCH = [
   {
     headline: "Every buyer is a potential shareholder.",
-    body: "The default is zero shares. You buy, you're on the cap table, you decide whether to earn equity. This reframes the entire relationship between skill authors and skill users.",
+    body: "The default is 0% ownership. You buy access, then decide whether to earn into the economics. This reframes the relationship between skill authors and skill users.",
   },
   {
     headline: "Skills that get better the more they fail.",

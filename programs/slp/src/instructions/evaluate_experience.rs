@@ -3,7 +3,7 @@ use crate::{
     constants::*,
     error::SlpError,
     events::*,
-    math::{mint_contribution_shares, MintInput},
+    math::{evaluate_contribution_ownership, EvaluateOwnershipInput},
     state::*,
 };
 
@@ -64,60 +64,69 @@ pub fn handler(ctx: Context<EvaluateExperience>, score: u8, judge_report_tx_id: 
     if score < MIN_APPROVE_SCORE {
         exp.status = STATUS_REJECTED;
         exp.contribution_score = score;
-        exp.shares_minted = 0;
+        exp.contribution_weight_delta = 0;
+        exp.ownership_delta_bps = 0;
         exp.evaluated_at = now;
         exp.judge_report_tx_id = judge_report_tx_id;
         emit!(ExperienceEvaluated {
             skill: ctx.accounts.skill.key(),
             experience_id: exp.experience_id,
+            contributor: exp.contributor,
             score,
-            shares_minted: 0,
+            contribution_weight_delta: 0,
+            ownership_delta_bps: 0,
+            author_ownership_bps: ledger.author_ownership_bps,
+            contributor_pool_bps: ledger.contributor_pool_bps,
             approved: false,
-            floor_hit: false,
         });
         return Ok(());
     }
 
-    let mint = mint_contribution_shares(MintInput {
+    let ownership = evaluate_contribution_ownership(EvaluateOwnershipInput {
         score,
         k: ctx.accounts.skill.k,
-        author_shares: ledger.author_shares,
-        total_shares: ledger.total_shares,
+        author_ownership_bps: ledger.author_ownership_bps,
+        contributor_pool_bps: ledger.contributor_pool_bps,
         min_author_ratio_bps: ledger.min_author_ratio_bps,
+        total_contributor_weight: ledger.total_contributor_weight,
+        contributor_count: ledger.contributor_count,
+        contributor_weight: share.contribution_weight,
+        points_per_100bps: ledger.points_per_100bps,
+        max_pool_increase_per_evaluation_bps: ledger.max_pool_increase_per_evaluation_bps,
     });
 
-    ledger.total_shares = ledger.total_shares.saturating_add(mint.shares_to_mint);
+    ledger.author_ownership_bps = ownership.author_ownership_bps;
+    ledger.contributor_pool_bps = ownership.contributor_pool_bps;
+    ledger.total_contributor_weight = ownership.total_contributor_weight;
+    ledger.contributor_count = ownership.contributor_count;
     ledger.last_snapshot_time = now;
 
-    share.shares = share.shares.saturating_add(mint.shares_to_mint);
-    if share.first_contribution_at == 0 && mint.shares_to_mint > 0 {
+    share.contribution_weight = share
+        .contribution_weight
+        .saturating_add(ownership.contribution_weight_delta);
+    if share.first_contribution_at == 0 && ownership.contribution_weight_delta > 0 {
         share.first_contribution_at = now;
-        ledger.contributor_count = ledger.contributor_count.saturating_add(1);
     }
     share.last_contribution_at = now;
     share.lock_until = now + LOCK_PERIOD_SECONDS;
 
     exp.status = STATUS_EVALUATED;
     exp.contribution_score = score;
-    exp.shares_minted = mint.shares_to_mint;
+    exp.contribution_weight_delta = ownership.contribution_weight_delta;
+    exp.ownership_delta_bps = ownership.ownership_delta_bps;
     exp.evaluated_at = now;
     exp.judge_report_tx_id = judge_report_tx_id;
 
     emit!(ExperienceEvaluated {
         skill: ctx.accounts.skill.key(),
         experience_id: exp.experience_id,
+        contributor: exp.contributor,
         score,
-        shares_minted: mint.shares_to_mint,
+        contribution_weight_delta: ownership.contribution_weight_delta,
+        ownership_delta_bps: ownership.ownership_delta_bps,
+        author_ownership_bps: ledger.author_ownership_bps,
+        contributor_pool_bps: ledger.contributor_pool_bps,
         approved: true,
-        floor_hit: mint.floor_hit,
     });
-    if mint.shares_to_mint > 0 {
-        emit!(SharesMinted {
-            skill: ctx.accounts.skill.key(),
-            holder: exp.contributor,
-            amount: mint.shares_to_mint,
-            total_shares_after: ledger.total_shares,
-        });
-    }
     Ok(())
 }

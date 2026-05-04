@@ -338,12 +338,12 @@ const SLIDES: Slide[] = [
             What we are building, in one breath.
           </div>
           <p className="font-display uppercase leading-[1] tracking-[-0.01em] text-[clamp(2rem,6vw,5rem)] max-w-[18ch]">
-            Buying a skill is <span className="text-accent">opting into ownership</span> at zero shares.
+            Buying a skill is <span className="text-accent">opting into ownership</span> at 0%.
           </p>
           <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-3 max-w-3xl">
             {[
               "buy ↦ joined the cap table",
-              "contribute ↦ shares minted",
+              "contribute ↦ ownership grows",
               "skill earns ↦ holders earn",
             ].map((s) => (
               <div key={s} className="border border-ink bg-paper-raised p-4 font-mono text-[12px] uppercase tracking-[0.12em]">
@@ -364,12 +364,12 @@ const SLIDES: Slide[] = [
         <div className="grid grid-cols-12 gap-8 items-center w-full">
           <div className="col-span-12 md:col-span-7">
             <Headline kicker="The single move that re-wires every incentive.">
-              Mint shares.<br />
-              <span className="text-accent">Don&apos;t transfer them.</span>
+              Weight contributions.<br />
+              <span className="text-accent">Derive ownership.</span>
             </Headline>
             <ul className="mt-8 space-y-4">
-              <Bullet>buyers start at 0 shares</Bullet>
-              <Bullet>contributions mint new shares</Bullet>
+              <Bullet>buyers start at 0% ownership</Bullet>
+              <Bullet>contributions add weight gradually</Bullet>
               <Bullet>author floor is protected by contract</Bullet>
               <Bullet>shareholders share future revenue</Bullet>
             </ul>
@@ -380,16 +380,15 @@ const SLIDES: Slide[] = [
               <ShareBar
                 label="after Bob contributes (38/50)"
                 segments={[
-                  { name: "ALICE", pct: 72.5, tone: "ink" },
-                  { name: "BOB", pct: 27.5, tone: "accent" },
+                  { name: "ALICE", pct: 100, tone: "ink" },
+                  { name: "BOB", pct: 0, tone: "accent" },
                 ]}
               />
               <ShareBar
-                label="after Carol just subscribes"
+                label="after more contribution weight"
                 segments={[
-                  { name: "ALICE", pct: 72.5, tone: "ink" },
-                  { name: "BOB", pct: 27.5, tone: "accent" },
-                  { name: "CAROL", pct: 0, tone: "muted" },
+                  { name: "ALICE", pct: 95, tone: "ink" },
+                  { name: "BOB", pct: 5, tone: "accent" },
                 ]}
               />
             </div>
@@ -419,7 +418,7 @@ const SLIDES: Slide[] = [
               ["02 REFLECT", "drafts patch + JSON"],
               ["03 SUBMIT", "Phantom signs · on-chain"],
               ["04 JUDGE", "AI scores 5 dims · 30s"],
-              ["05 EVOLVE", "shares minted · v+1"],
+              ["05 EVOLVE", "ownership updated · v+1"],
             ].map(([k, v]) => (
               <div key={k} className="border border-ink bg-paper px-3 py-2">
                 <div className="font-display text-sm uppercase tracking-[0.06em] text-accent">{k}</div>
@@ -448,7 +447,7 @@ const SLIDES: Slide[] = [
             { who: "ALICE", role: "AUTHOR", act: "publishes skill · 0.1 SOL/mo" },
             { who: "BOB", role: "OPERATOR", act: "subscribes · agent fails · reflects" },
             { who: "JUDGE", role: "AI · CLAUDE", act: "scores 38/50 · signs report" },
-            { who: "CAROL", role: "SUBSCRIBER", act: "pays · earns 0 shares" },
+            { who: "CAROL", role: "SUBSCRIBER", act: "pays · starts at 0%" },
           ].map((c) => (
             <div key={c.who} className="border border-ink bg-paper p-4 flex flex-col justify-between">
               <div>
@@ -562,10 +561,10 @@ WEB APP  (skillloops.xyz)
         <ol className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-3 flex-1 content-start">
           {[
             ["1", "PUBLISH", "Alice signs Irys + Solana"],
-            ["2", "SUBSCRIBE", "Bob joins · ShareAccount = 0"],
+            ["2", "SUBSCRIBE", "Bob joins · ownership = 0%"],
             ["3", "USE & FAIL", "agent misses unsafe block"],
             ["4", "REFLECT", "skill outputs ExperienceBundle"],
-            ["5", "SUBMIT & JUDGE", "score 38/50 · 380 shares"],
+            ["5", "SUBMIT & JUDGE", "score 38/50 · weight recorded"],
             ["6", "SETTLE & EVOLVE", "Alice merges · v1.1"],
           ].map(([n, t, b]) => (
             <li key={n} className="border border-ink bg-paper p-4 flex gap-4 items-start">

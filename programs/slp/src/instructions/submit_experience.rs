@@ -56,7 +56,8 @@ pub fn handler(ctx: Context<SubmitExperience>, args: SubmitExperienceArgs) -> Re
     exp.arweave_tx_id = args.arweave_tx_id;
     exp.status = STATUS_PENDING;
     exp.contribution_score = 0;
-    exp.shares_minted = 0;
+    exp.contribution_weight_delta = 0;
+    exp.ownership_delta_bps = 0;
     exp.submitted_at = now;
     exp.evaluated_at = 0;
     exp.judge_report_tx_id = String::new();
@@ -66,7 +67,7 @@ pub fn handler(ctx: Context<SubmitExperience>, args: SubmitExperienceArgs) -> Re
     if share.holder == Pubkey::default() {
         share.holder = ctx.accounts.contributor.key();
         share.skill = ctx.accounts.skill.key();
-        share.shares = 0;
+        share.contribution_weight = 0;
         share.lock_until = 0;
         share.first_contribution_at = 0;
         share.last_contribution_at = 0;

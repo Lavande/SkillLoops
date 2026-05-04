@@ -1,8 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { _resetSingletonForTesting, closeDb, getDb } from "@/lib/db";
+import { _resetSingletonForTesting, getDb } from "@/lib/db";
 
 beforeEach(() => _resetSingletonForTesting());
 
@@ -27,18 +24,17 @@ describe("indexer migrations", () => {
       .map((c) => c.name);
     expect(pk).toEqual(["skill_id", "experience_id"]);
   });
-  it("backfills share ledger author floors from skills", () => {
-    const dbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "slp-migration-")), "slp.sqlite");
-    let db = getDb(dbPath);
-    db.prepare(`INSERT INTO skills (skill_id, author, name, description, category, current_version, content_hash, arweave_tx_id, subscription_price, min_author_ratio_bps, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
-      .run("skill-a", "author", "Skill", "desc", "cat", 1, "hash", "ar", 100, 4000, 1, 1);
-    db.prepare(`INSERT INTO share_ledgers (skill_id, total_shares, author_shares, min_author_ratio_bps, contributor_count, last_snapshot_time) VALUES (?,1000,1000,0,0,1)`)
-      .run("skill-a");
-    closeDb();
-
-    db = getDb(dbPath);
-
-    const ledger = db.prepare(`SELECT min_author_ratio_bps FROM share_ledgers WHERE skill_id = ?`).get("skill-a") as any;
-    expect(ledger.min_author_ratio_bps).toBe(4000);
+  it("creates ownership-weight share ledger columns", () => {
+    const db = getDb(":memory:");
+    const cols = db.prepare(`PRAGMA table_info(share_ledgers)`).all() as any[];
+    expect(cols.map((c) => c.name)).toEqual(
+      expect.arrayContaining([
+        "author_ownership_bps",
+        "contributor_pool_bps",
+        "total_contributor_weight",
+        "points_per_100bps",
+        "max_pool_increase_per_evaluation_bps",
+      ])
+    );
   });
 });

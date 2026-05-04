@@ -10,6 +10,10 @@ import { isRunning } from "@/lib/indexer";
 
 export const dynamic = "force-dynamic";
 
+function chainNumber(v: any): number {
+  return Number(v?.toString?.() ?? v);
+}
+
 export async function GET(req: NextRequest) {
   return guarded(async () => {
     const db = getDb();
@@ -29,15 +33,30 @@ export async function GET(req: NextRequest) {
     const program = getProgram(conn, {
       publicKey: new PublicKey("11111111111111111111111111111112"),
       signTransaction: async (t: any) => t,
-    });
+    }, programId);
     const skills = db.prepare(`SELECT skill_id FROM skills ORDER BY RANDOM() LIMIT 5`).all() as { skill_id: string }[];
     const mismatches: any[] = [];
     for (const s of skills) {
       const [ledgerPda] = pdas.shareLedger(programId, new PublicKey(s.skill_id));
       const onChain = await (program.account as any).shareLedger.fetch(ledgerPda);
-      const row = db.prepare(`SELECT total_shares FROM share_ledgers WHERE skill_id = ?`).get(s.skill_id) as any;
-      const chainTotal = Number(onChain.totalShares.toString());
-      if (row.total_shares !== chainTotal) mismatches.push({ skillId: s.skill_id, db: row.total_shares, chain: chainTotal });
+      const row = db.prepare(`SELECT author_ownership_bps, contributor_pool_bps, total_contributor_weight FROM share_ledgers WHERE skill_id = ?`).get(s.skill_id) as any;
+      const chain = {
+        authorOwnershipBps: chainNumber(onChain.authorOwnershipBps),
+        contributorPoolBps: chainNumber(onChain.contributorPoolBps),
+        totalContributorWeight: chainNumber(onChain.totalContributorWeight),
+      };
+      const dbSnapshot = {
+        authorOwnershipBps: row.author_ownership_bps,
+        contributorPoolBps: row.contributor_pool_bps,
+        totalContributorWeight: row.total_contributor_weight,
+      };
+      if (
+        dbSnapshot.authorOwnershipBps !== chain.authorOwnershipBps ||
+        dbSnapshot.contributorPoolBps !== chain.contributorPoolBps ||
+        dbSnapshot.totalContributorWeight !== chain.totalContributorWeight
+      ) {
+        mismatches.push({ skillId: s.skill_id, db: dbSnapshot, chain });
+      }
     }
     return { ...base, ok: mismatches.length === 0, mismatches };
   });

@@ -132,14 +132,14 @@ function applyEventLocal(db: DB, ev: SlpEvent): void {
         .run(skillId, author, "<pending>", "", "uncategorized",
              "", "", 0, 0, createdAt, createdAt);
       db.prepare(`INSERT OR IGNORE INTO share_ledgers
-        (skill_id, total_shares, author_shares, min_author_ratio_bps, contributor_count, last_snapshot_time)
-        VALUES (?, 1000, 1000, 0, 0, ?)`).run(skillId, createdAt);
+        (skill_id, author_ownership_bps, contributor_pool_bps, min_author_ratio_bps, total_contributor_weight, contributor_count, points_per_100bps, max_pool_increase_per_evaluation_bps, last_snapshot_time)
+        VALUES (?, 10000, 0, 0, 0, 0, 250, 500, ?)`).run(skillId, createdAt);
       db.prepare(`INSERT OR IGNORE INTO share_accounts
-        (holder, skill_id, shares, lock_until, first_contribution_at, last_contribution_at)
-        VALUES (?, ?, 1000, 0, NULL, NULL)`).run(author, skillId);
+        (holder, skill_id, contribution_weight, lock_until, first_contribution_at, last_contribution_at)
+        VALUES (?, ?, 0, 0, NULL, NULL)`).run(author, skillId);
       db.prepare(`INSERT OR IGNORE INTO revenue_pools
-        (skill_id, current_period_revenue, total_lifetime_revenue, current_period_start, period_length, snapshot_total_shares, last_settlement_time)
-        VALUES (?, 0, 0, ?, 300, 0, 0)`).run(skillId, createdAt);
+        (skill_id, current_period_revenue, total_lifetime_revenue, current_period_start, period_length, snapshot_author_ownership_bps, snapshot_contributor_pool_bps, last_settlement_time)
+        VALUES (?, 0, 0, ?, 300, 10000, 0, 0)`).run(skillId, createdAt);
       db.prepare(`INSERT OR IGNORE INTO skill_versions
         (skill_id, version, content_hash, arweave_tx_id, contributing_experience_ids, published_at)
         VALUES (?, 1, '', '', '[]', ?)`).run(skillId, createdAt);
@@ -160,7 +160,7 @@ function applyEventLocal(db: DB, ev: SlpEvent): void {
         db.prepare(`UPDATE subscriptions SET expiry_time = ?, is_active = 1 WHERE subscriber = ? AND skill_id = ?`)
           .run(expiry, subscriber, skillId);
       }
-      db.prepare(`INSERT OR IGNORE INTO share_accounts (holder, skill_id, shares, lock_until) VALUES (?,?,0,0)`)
+      db.prepare(`INSERT OR IGNORE INTO share_accounts (holder, skill_id, contribution_weight, lock_until) VALUES (?,?,0,0)`)
         .run(subscriber, skillId);
       db.prepare(`UPDATE skills SET total_revenue = total_revenue + ? WHERE skill_id = ?`).run(price, skillId);
       db.prepare(`UPDATE revenue_pools SET current_period_revenue = current_period_revenue + ? WHERE skill_id = ?`).run(price, skillId);
@@ -174,65 +174,70 @@ function applyEventLocal(db: DB, ev: SlpEvent): void {
         (experience_id, skill_id, contributor, skill_version, content_hash, arweave_tx_id, bundle_json, status, submitted_at)
         VALUES (?,?,?,1,'','','','Pending',?)`)
         .run(experienceId, skillId, contributor, t);
-      db.prepare(`INSERT OR IGNORE INTO share_accounts (holder, skill_id, shares, lock_until) VALUES (?,?,0,0)`)
+      db.prepare(`INSERT OR IGNORE INTO share_accounts (holder, skill_id, contribution_weight, lock_until) VALUES (?,?,0,0)`)
         .run(contributor, skillId);
       return;
     }
     case "ExperienceEvaluated": {
       const skillId = (ev.data.skill as PublicKey).toBase58();
       const experienceId = Number(ev.data.experienceId);
+      const contributor = (ev.data.contributor as PublicKey).toBase58();
       const score = Number(ev.data.score);
-      const sharesMinted = Number(ev.data.sharesMinted);
+      const contributionWeightDelta = Number(ev.data.contributionWeightDelta);
+      const ownershipDeltaBps = Number(ev.data.ownershipDeltaBps);
+      const authorOwnershipBps = Number(ev.data.authorOwnershipBps);
+      const contributorPoolBps = Number(ev.data.contributorPoolBps);
       const approved = Boolean(ev.data.approved);
-      db.prepare(`UPDATE experiences SET status = ?, contribution_score = ?, shares_minted = ?, evaluated_at = ? WHERE skill_id = ? AND experience_id = ?`)
-        .run(approved ? "Evaluated" : "Rejected", score, sharesMinted, t, skillId, experienceId);
-      return;
-    }
-    case "SharesMinted": {
-      const skillId = (ev.data.skill as PublicKey).toBase58();
-      const holder = (ev.data.holder as PublicKey).toBase58();
-      const amount = Number(ev.data.amount);
-      const totalAfter = Number(ev.data.totalSharesAfter);
-      const ledger = db.prepare(`SELECT total_shares FROM share_ledgers WHERE skill_id = ?`).get(skillId) as any;
-      const currentTotal = Number(ledger?.total_shares ?? 0);
-      const sharesToApply = Math.min(amount, Math.max(0, totalAfter - currentTotal));
-      const existing = db.prepare(`SELECT shares FROM share_accounts WHERE holder=? AND skill_id=?`).get(holder, skillId) as any;
-      const wasZero = (existing?.shares ?? 0) === 0;
+      db.prepare(`UPDATE experiences
+          SET status = ?, contribution_score = ?, contribution_weight_delta = ?, ownership_delta_bps = ?, evaluated_at = ?
+          WHERE skill_id = ? AND experience_id = ?`)
+        .run(approved ? "Evaluated" : "Rejected", score, contributionWeightDelta, ownershipDeltaBps, t, skillId, experienceId);
       db.prepare(`UPDATE share_ledgers
-          SET total_shares = CASE WHEN total_shares < ? THEN ? ELSE total_shares END,
+          SET author_ownership_bps = ?,
+              contributor_pool_bps = ?,
               last_snapshot_time = ?
           WHERE skill_id = ?`)
-        .run(totalAfter, totalAfter, t, skillId);
-      if (wasZero && sharesToApply > 0) {
-        db.prepare(`UPDATE share_ledgers SET contributor_count = contributor_count + 1 WHERE skill_id = ?`).run(skillId);
-      }
-      if (sharesToApply > 0) {
+        .run(authorOwnershipBps, contributorPoolBps, t, skillId);
+      if (approved && contributionWeightDelta > 0) {
+        const existing = db.prepare(`SELECT contribution_weight FROM share_accounts WHERE holder=? AND skill_id=?`).get(contributor, skillId) as any;
+        const wasZero = Number(existing?.contribution_weight ?? 0) === 0;
+        db.prepare(`INSERT OR IGNORE INTO share_accounts (holder, skill_id, contribution_weight, lock_until) VALUES (?,?,0,0)`)
+          .run(contributor, skillId);
         db.prepare(`UPDATE share_accounts
-          SET shares = shares + ?,
+          SET contribution_weight = contribution_weight + ?,
               lock_until = ?,
               first_contribution_at = COALESCE(first_contribution_at, ?),
               last_contribution_at = ?
           WHERE holder = ? AND skill_id = ?`)
-          .run(sharesToApply, t + 180 * 24 * 60 * 60, t, t, holder, skillId);
+          .run(contributionWeightDelta, t + 180 * 24 * 60 * 60, t, t, contributor, skillId);
+        db.prepare(`UPDATE share_ledgers
+          SET total_contributor_weight = total_contributor_weight + ?,
+              contributor_count = contributor_count + ?
+          WHERE skill_id = ?`)
+          .run(contributionWeightDelta, wasZero ? 1 : 0, skillId);
       }
       return;
     }
     case "PeriodSettled": {
       const skillId = (ev.data.skill as PublicKey).toBase58();
       const periodRevenue = Number(ev.data.periodRevenue);
-      const totalShares = Number(ev.data.totalShares);
+      const authorOwnershipBps = Number(ev.data.authorOwnershipBps);
+      const contributorPoolBps = Number(ev.data.contributorPoolBps);
       const pool = db.prepare(`SELECT current_period_start, period_length FROM revenue_pools WHERE skill_id = ?`).get(skillId) as any;
       const periodStart = pool?.current_period_start ?? t;
-      db.prepare(`INSERT INTO revenue_history (skill_id, period_start, period_end, period_revenue, snapshot_total_shares) VALUES (?,?,?,?,?)`)
-        .run(skillId, periodStart, t, periodRevenue, totalShares);
+      db.prepare(`INSERT INTO revenue_history
+          (skill_id, period_start, period_end, period_revenue, snapshot_author_ownership_bps, snapshot_contributor_pool_bps)
+          VALUES (?,?,?,?,?,?)`)
+        .run(skillId, periodStart, t, periodRevenue, authorOwnershipBps, contributorPoolBps);
       db.prepare(`UPDATE revenue_pools SET
           current_period_revenue = 0,
           total_lifetime_revenue = total_lifetime_revenue + ?,
           current_period_start = ?,
-          snapshot_total_shares = ?,
+          snapshot_author_ownership_bps = ?,
+          snapshot_contributor_pool_bps = ?,
           last_settlement_time = ?
           WHERE skill_id = ?`)
-        .run(periodRevenue, t, totalShares, t, skillId);
+        .run(periodRevenue, t, authorOwnershipBps, contributorPoolBps, t, skillId);
       // per-holder claimable rows are backfilled via enrichAfterCommit (getProgramAccounts)
       return;
     }
@@ -309,12 +314,14 @@ async function enrichAfterCommit(conn: Connection, db: DB, ev: SlpEvent): Promis
     try {
       const acct = await (program.account as any).experienceRecord.fetch(experiencePk);
       db.prepare(`UPDATE experiences SET
-          shares_minted = ?,
+          contribution_weight_delta = ?,
+          ownership_delta_bps = ?,
           evaluated_at = ?,
           judge_report_tx_id = ?
           WHERE skill_id = ? AND experience_id = ?`)
         .run(
-          Number(acct.sharesMinted?.toString?.() ?? acct.sharesMinted),
+          Number(acct.contributionWeightDelta?.toString?.() ?? acct.contributionWeightDelta),
+          Number(acct.ownershipDeltaBps?.toString?.() ?? acct.ownershipDeltaBps),
           Number(acct.evaluatedAt?.toString?.() ?? acct.evaluatedAt),
           acct.judgeReportTxId,
           skillPk.toBase58(),

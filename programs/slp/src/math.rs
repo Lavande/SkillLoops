@@ -2,43 +2,106 @@
 // Mirrors lib/domain/shares.ts and lib/domain/revenue.ts.
 
 #[derive(Clone, Copy, Debug)]
-pub struct MintInput {
+pub struct EvaluateOwnershipInput {
     pub score: u8,
     pub k: u16,
-    pub author_shares: u64,
-    pub total_shares: u64,
+    pub author_ownership_bps: u16,
+    pub contributor_pool_bps: u16,
     pub min_author_ratio_bps: u16,
+    pub total_contributor_weight: u64,
+    pub contributor_count: u32,
+    pub contributor_weight: u64,
+    pub points_per_100bps: u64,
+    pub max_pool_increase_per_evaluation_bps: u16,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct MintOutput {
-    pub shares_to_mint: u64,
-    pub floor_hit: bool,
+pub struct EvaluateOwnershipOutput {
+    pub contribution_weight_delta: u64,
+    pub ownership_delta_bps: u16,
+    pub author_ownership_bps: u16,
+    pub contributor_pool_bps: u16,
+    pub total_contributor_weight: u64,
+    pub contributor_count: u32,
 }
 
-pub fn mint_contribution_shares(i: MintInput) -> MintOutput {
-    let base_shares = (i.score as u64).saturating_mul(i.k as u64);
-
-    // max_total = author_shares * 10_000 / min_author_ratio_bps (u128 intermediate).
-    let max_total = (i.author_shares as u128)
-        .saturating_mul(10_000u128)
-        .checked_div(i.min_author_ratio_bps as u128)
-        .unwrap_or(u128::MAX);
-    let max_total_u64 = max_total.min(u64::MAX as u128) as u64;
-
-    let headroom = max_total_u64.saturating_sub(i.total_shares);
-    let shares_to_mint = base_shares.min(headroom);
-
-    MintOutput {
-        shares_to_mint,
-        floor_hit: shares_to_mint < base_shares,
+pub fn early_multiplier_bps(current_nonzero_contributor_count: u32) -> u16 {
+    if current_nonzero_contributor_count == 0 {
+        2_500
+    } else if current_nonzero_contributor_count <= 2 {
+        4_000
+    } else if current_nonzero_contributor_count <= 8 {
+        6_500
+    } else {
+        10_000
     }
 }
 
+pub fn evaluate_contribution_ownership(i: EvaluateOwnershipInput) -> EvaluateOwnershipOutput {
+    let raw_weight = (i.score as u64).saturating_mul(i.k as u64);
+    let contribution_weight_delta = raw_weight
+        .saturating_mul(early_multiplier_bps(i.contributor_count) as u64)
+        / 10_000u64;
+    let old_ownership = contributor_ownership_bps(
+        i.contributor_pool_bps,
+        i.contributor_weight,
+        i.total_contributor_weight,
+    );
+    let total_contributor_weight = i
+        .total_contributor_weight
+        .saturating_add(contribution_weight_delta);
+    let max_pool_bps = 10_000u16.saturating_sub(i.min_author_ratio_bps);
+    let target_pool_bps_u64 = total_contributor_weight
+        .checked_div(i.points_per_100bps.max(1))
+        .unwrap_or(0)
+        .saturating_mul(100)
+        .min(max_pool_bps as u64);
+    let target_pool_bps = target_pool_bps_u64 as u16;
+    let contributor_pool_bps = i.contributor_pool_bps.max(target_pool_bps.min(
+        i.contributor_pool_bps
+            .saturating_add(i.max_pool_increase_per_evaluation_bps),
+    ));
+    let new_contributor_weight = i
+        .contributor_weight
+        .saturating_add(contribution_weight_delta);
+    let new_ownership = contributor_ownership_bps(
+        contributor_pool_bps,
+        new_contributor_weight,
+        total_contributor_weight,
+    );
+    let contributor_count = if i.contributor_weight == 0 && contribution_weight_delta > 0 {
+        i.contributor_count.saturating_add(1)
+    } else {
+        i.contributor_count
+    };
+
+    EvaluateOwnershipOutput {
+        contribution_weight_delta,
+        ownership_delta_bps: new_ownership.saturating_sub(old_ownership),
+        author_ownership_bps: 10_000u16.saturating_sub(contributor_pool_bps),
+        contributor_pool_bps,
+        total_contributor_weight,
+        contributor_count,
+    }
+}
+
+pub fn contributor_ownership_bps(
+    contributor_pool_bps: u16,
+    contribution_weight: u64,
+    total_contributor_weight: u64,
+) -> u16 {
+    if total_contributor_weight == 0 || contribution_weight == 0 {
+        return 0;
+    }
+    ((contributor_pool_bps as u128).saturating_mul(contribution_weight as u128)
+        / (total_contributor_weight as u128)) as u16
+}
+
 #[derive(Clone, Copy, Debug)]
-pub struct Holder {
-    pub shares: u64,
+pub struct OwnershipHolder {
+    pub contribution_weight: u64,
     pub index: usize,
+    pub is_author: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -47,208 +110,251 @@ pub struct Claim {
     pub amount: u64,
 }
 
-pub fn compute_claims(
-    holders: &[Holder],
+pub fn compute_ownership_claims(
+    holders: &[OwnershipHolder],
     period_revenue: u64,
-    total_shares: u64,
+    author_ownership_bps: u16,
+    contributor_pool_bps: u16,
+    total_contributor_weight: u64,
 ) -> Vec<Claim> {
     if holders.is_empty() {
         return Vec::new();
     }
-    if total_shares == 0 || period_revenue == 0 {
-        return holders.iter()
-            .map(|h| Claim { index: h.index, amount: 0 })
+    if period_revenue == 0 {
+        return holders
+            .iter()
+            .map(|h| Claim {
+                index: h.index,
+                amount: 0,
+            })
+            .collect();
+    }
+    if total_contributor_weight == 0 || contributor_pool_bps == 0 {
+        return holders
+            .iter()
+            .map(|h| Claim {
+                index: h.index,
+                amount: if h.is_author { period_revenue } else { 0 },
+            })
             .collect();
     }
 
-    let mut claims: Vec<Claim> = holders.iter().map(|h| {
-        let amount = ((period_revenue as u128) * (h.shares as u128)
-                      / (total_shares as u128)) as u64;
-        Claim { index: h.index, amount }
-    }).collect();
+    let author_claim =
+        ((period_revenue as u128) * (author_ownership_bps as u128) / 10_000u128) as u64;
+    let contributor_revenue = period_revenue.saturating_sub(author_claim);
+    let mut claims: Vec<Claim> = holders
+        .iter()
+        .map(|h| {
+            let amount = if h.is_author {
+                author_claim
+            } else if h.contribution_weight == 0 {
+                0
+            } else {
+                ((contributor_revenue as u128) * (h.contribution_weight as u128)
+                    / (total_contributor_weight as u128)) as u64
+            };
+            Claim {
+                index: h.index,
+                amount,
+            }
+        })
+        .collect();
 
     let distributed: u64 = claims.iter().map(|c| c.amount).sum();
     let remainder = period_revenue.saturating_sub(distributed);
-
     if remainder > 0 {
-        // Largest shares wins; ties broken by smallest original position.
-        let mut best_pos: usize = 0;
-        for i in 1..holders.len() {
-            let (bh, ph) = (holders[best_pos], holders[i]);
-            if ph.shares > bh.shares {
-                best_pos = i;
-            }
-            // No else — equal or smaller leaves best_pos unchanged (preserves first-win).
-        }
-        claims[best_pos].amount = claims[best_pos].amount.saturating_add(remainder);
+        let best = largest_effective_holder_index(
+            holders,
+            author_ownership_bps,
+            contributor_pool_bps,
+            total_contributor_weight,
+        );
+        claims[best].amount = claims[best].amount.saturating_add(remainder);
     }
-
     claims
+}
+
+fn largest_effective_holder_index(
+    holders: &[OwnershipHolder],
+    author_ownership_bps: u16,
+    contributor_pool_bps: u16,
+    total_contributor_weight: u64,
+) -> usize {
+    let mut best_pos = 0usize;
+    let mut best_bps = 0u16;
+    for (pos, h) in holders.iter().enumerate() {
+        let bps = if h.is_author {
+            author_ownership_bps
+        } else {
+            contributor_ownership_bps(
+                contributor_pool_bps,
+                h.contribution_weight,
+                total_contributor_weight,
+            )
+        };
+        if pos == 0 || bps > best_bps {
+            best_pos = pos;
+            best_bps = bps;
+        }
+    }
+    best_pos
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // ---- mint_contribution_shares ----
+    #[test]
+    fn early_multiplier_tiers() {
+        assert_eq!(early_multiplier_bps(0), 2_500);
+        assert_eq!(early_multiplier_bps(1), 4_000);
+        assert_eq!(early_multiplier_bps(2), 4_000);
+        assert_eq!(early_multiplier_bps(3), 6_500);
+        assert_eq!(early_multiplier_bps(8), 6_500);
+        assert_eq!(early_multiplier_bps(9), 10_000);
+    }
 
     #[test]
-    fn mint_prd_demo() {
-        // score=38, k=10, author=1000, total=1000, bps=4000 (40% floor)
-        let out = mint_contribution_shares(MintInput {
-            score: 38, k: 10, author_shares: 1000,
-            total_shares: 1000, min_author_ratio_bps: 4000,
+    fn first_max_score_contributor_gets_five_percent() {
+        let out = evaluate_contribution_ownership(EvaluateOwnershipInput {
+            score: 50,
+            k: 100,
+            author_ownership_bps: 10_000,
+            contributor_pool_bps: 0,
+            min_author_ratio_bps: 4_000,
+            total_contributor_weight: 0,
+            contributor_count: 0,
+            contributor_weight: 0,
+            points_per_100bps: 250,
+            max_pool_increase_per_evaluation_bps: 500,
         });
-        assert_eq!(out, MintOutput { shares_to_mint: 380, floor_hit: false });
+        assert_eq!(out.contribution_weight_delta, 1_250);
+        assert_eq!(out.ownership_delta_bps, 500);
+        assert_eq!(out.author_ownership_bps, 9_500);
+        assert_eq!(out.contributor_pool_bps, 500);
+        assert_eq!(out.total_contributor_weight, 1_250);
+        assert_eq!(out.contributor_count, 1);
     }
 
     #[test]
-    fn mint_floor_hit() {
-        // Pre-state just under the floor: total=2400, author=1000, bps=4000 => max_total=2500 => headroom=100.
-        // base = 50*10 = 500. Expect clamp to 100, floor_hit=true.
-        let out = mint_contribution_shares(MintInput {
-            score: 50, k: 10, author_shares: 1000,
-            total_shares: 2400, min_author_ratio_bps: 4000,
+    fn floor_stops_author_dilution_but_allows_new_weight() {
+        let out = evaluate_contribution_ownership(EvaluateOwnershipInput {
+            score: 50,
+            k: 100,
+            author_ownership_bps: 4_000,
+            contributor_pool_bps: 6_000,
+            min_author_ratio_bps: 4_000,
+            total_contributor_weight: 1_500,
+            contributor_count: 1,
+            contributor_weight: 0,
+            points_per_100bps: 250,
+            max_pool_increase_per_evaluation_bps: 500,
         });
-        assert_eq!(out, MintOutput { shares_to_mint: 100, floor_hit: true });
+        assert_eq!(out.author_ownership_bps, 4_000);
+        assert_eq!(out.contributor_pool_bps, 6_000);
+        assert!(out.contribution_weight_delta > 0);
+        assert!(out.ownership_delta_bps > 0);
     }
 
     #[test]
-    fn mint_threshold_boundary() {
-        // score == MIN_APPROVE_SCORE (20). Caller enforces threshold; math returns 200.
-        let out = mint_contribution_shares(MintInput {
-            score: 20, k: 10, author_shares: 1000,
-            total_shares: 1000, min_author_ratio_bps: 4000,
+    fn returning_contributor_does_not_increment_count() {
+        let out = evaluate_contribution_ownership(EvaluateOwnershipInput {
+            score: 30,
+            k: 10,
+            author_ownership_bps: 9_500,
+            contributor_pool_bps: 500,
+            min_author_ratio_bps: 4_000,
+            total_contributor_weight: 1_250,
+            contributor_count: 1,
+            contributor_weight: 1_250,
+            points_per_100bps: 250,
+            max_pool_increase_per_evaluation_bps: 500,
         });
-        assert_eq!(out, MintOutput { shares_to_mint: 200, floor_hit: false });
+        assert_eq!(out.contribution_weight_delta, 120);
+        assert_eq!(out.contributor_count, 1);
+        assert_eq!(out.total_contributor_weight, 1_370);
     }
 
     #[test]
-    fn mint_zero_k() {
-        let out = mint_contribution_shares(MintInput {
-            score: 38, k: 0, author_shares: 1000,
-            total_shares: 1000, min_author_ratio_bps: 4000,
-        });
-        assert_eq!(out, MintOutput { shares_to_mint: 0, floor_hit: false });
-    }
-
-    #[test]
-    fn mint_post_ratio_invariant() {
-        // For any valid input, author/(total + minted) must stay >= floor_bps.
-        let cases = [
-            (38u8, 10u16, 1000u64, 1000u64, 4000u16),
-            (50, 10, 1000, 2400, 4000),
-            (42, 15, 500,  500,  5000),
-            (20, 10, 10_000, 20_000, 3000),
-            (1,  10, 1000, 1000, 3000),
-        ];
-        for (score, k, author, total, bps) in cases {
-            let out = mint_contribution_shares(MintInput {
-                score, k, author_shares: author,
-                total_shares: total, min_author_ratio_bps: bps,
-            });
-            let new_total = total + out.shares_to_mint;
-            // author/new_total >= bps/10000 ⇔ author*10000 >= bps*new_total.
-            let lhs = (author as u128) * 10_000;
-            let rhs = (bps as u128) * (new_total as u128);
-            assert!(
-                lhs >= rhs,
-                "invariant broken: score={score} k={k} author={author} total={total} bps={bps} minted={}",
-                out.shares_to_mint
-            );
-        }
-    }
-
-    #[test]
-    fn mint_large_numbers_no_panic() {
-        let out = mint_contribution_shares(MintInput {
-            score: 50, k: 100,
-            author_shares: 1_000_000_000,
-            total_shares: 1_000_000_000,
-            min_author_ratio_bps: 3000,
-        });
-        // 5000 shares base, plenty of headroom.
-        assert_eq!(out.shares_to_mint, 5000);
-        assert!(!out.floor_hit);
-    }
-
-    // ---- compute_claims ----
-
-    #[test]
-    fn claims_prd_demo_100m() {
-        // Alice=1000, Bob=380, revenue=100_000_000, total=1380
+    fn ownership_claims_split_author_and_contributors() {
         let holders = [
-            Holder { shares: 1000, index: 0 },
-            Holder { shares: 380, index: 1 },
+            OwnershipHolder {
+                contribution_weight: 0,
+                index: 0,
+                is_author: true,
+            },
+            OwnershipHolder {
+                contribution_weight: 1_500,
+                index: 1,
+                is_author: false,
+            },
+            OwnershipHolder {
+                contribution_weight: 500,
+                index: 2,
+                is_author: false,
+            },
         ];
-        let claims = compute_claims(&holders, 100_000_000, 1380);
-        assert_eq!(claims.len(), 2);
-        assert_eq!(claims[0], Claim { index: 0, amount: 72_463_769 });
-        assert_eq!(claims[1], Claim { index: 1, amount: 27_536_231 });
-        assert_eq!(claims[0].amount + claims[1].amount, 100_000_000);
+        let claims = compute_ownership_claims(&holders, 1_000, 4_000, 6_000, 2_000);
+        assert_eq!(claims[0].amount, 400);
+        assert_eq!(claims[1].amount, 450);
+        assert_eq!(claims[2].amount, 150);
     }
 
     #[test]
-    fn claims_prd_full_demo_200m() {
-        // Same holders, revenue=200_000_000 (matches Slice 1 Vitest output).
+    fn ownership_claims_zero_contributor_weight_pays_author() {
         let holders = [
-            Holder { shares: 1000, index: 0 },
-            Holder { shares: 380, index: 1 },
+            OwnershipHolder {
+                contribution_weight: 0,
+                index: 0,
+                is_author: true,
+            },
+            OwnershipHolder {
+                contribution_weight: 0,
+                index: 1,
+                is_author: false,
+            },
         ];
-        let claims = compute_claims(&holders, 200_000_000, 1380);
-        assert_eq!(claims[0].amount, 144_927_537);
-        assert_eq!(claims[1].amount, 55_072_463);
-        assert_eq!(claims[0].amount + claims[1].amount, 200_000_000);
+        let claims = compute_ownership_claims(&holders, 1_000, 4_000, 6_000, 0);
+        assert_eq!(claims[0].amount, 1_000);
+        assert_eq!(claims[1].amount, 0);
     }
 
     #[test]
-    fn claims_skip_zero_share_third_holder() {
-        // Carol has 0 shares — she should get 0.
+    fn ownership_claims_remainder_to_largest_effective_holder() {
         let holders = [
-            Holder { shares: 1000, index: 0 },
-            Holder { shares: 380, index: 1 },
-            Holder { shares: 0,    index: 2 },
+            OwnershipHolder {
+                contribution_weight: 0,
+                index: 0,
+                is_author: true,
+            },
+            OwnershipHolder {
+                contribution_weight: 1,
+                index: 1,
+                is_author: false,
+            },
+            OwnershipHolder {
+                contribution_weight: 1,
+                index: 2,
+                is_author: false,
+            },
         ];
-        let claims = compute_claims(&holders, 100_000_000, 1380);
-        assert_eq!(claims[0].amount, 72_463_769);
-        assert_eq!(claims[1].amount, 27_536_231);
-        assert_eq!(claims[2].amount, 0);
+        let claims = compute_ownership_claims(&holders, 101, 4_000, 6_000, 2);
+        assert_eq!(claims[0].amount, 41);
+        assert_eq!(claims[1].amount, 30);
+        assert_eq!(claims[2].amount, 30);
+        assert_eq!(claims.iter().map(|c| c.amount).sum::<u64>(), 101);
     }
 
     #[test]
-    fn claims_single_holder_gets_full() {
-        let holders = [Holder { shares: 1000, index: 0 }];
-        let claims = compute_claims(&holders, 100_000_000, 1000);
-        assert_eq!(claims[0].amount, 100_000_000);
-    }
+    fn ownership_claims_empty_and_zero_revenue() {
+        assert!(compute_ownership_claims(&[], 100, 4_000, 6_000, 2).is_empty());
 
-    #[test]
-    fn claims_three_way_tie_remainder_to_index_0() {
-        // Equal shares; 100 / 3 = 33 each, remainder 1 goes to the first holder.
-        let holders = [
-            Holder { shares: 100, index: 0 },
-            Holder { shares: 100, index: 1 },
-            Holder { shares: 100, index: 2 },
-        ];
-        let claims = compute_claims(&holders, 100, 300);
-        assert_eq!(claims[0].amount, 34);
-        assert_eq!(claims[1].amount, 33);
-        assert_eq!(claims[2].amount, 33);
-        assert_eq!(claims.iter().map(|c| c.amount).sum::<u64>(), 100);
-    }
-
-    #[test]
-    fn claims_degenerate_cases() {
-        // Empty holders.
-        assert!(compute_claims(&[], 100, 1000).is_empty());
-
-        // Zero total shares.
-        let hs = [Holder { shares: 1000, index: 0 }];
-        let out = compute_claims(&hs, 100, 0);
-        assert_eq!(out, vec![Claim { index: 0, amount: 0 }]);
-
-        // Zero revenue.
-        let out = compute_claims(&hs, 0, 1000);
-        assert_eq!(out, vec![Claim { index: 0, amount: 0 }]);
+        let holders = [OwnershipHolder {
+            contribution_weight: 0,
+            index: 0,
+            is_author: true,
+        }];
+        let claims = compute_ownership_claims(&holders, 0, 10_000, 0, 0);
+        assert_eq!(claims, vec![Claim { index: 0, amount: 0 }]);
     }
 }

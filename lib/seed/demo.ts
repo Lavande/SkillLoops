@@ -138,21 +138,23 @@ function seedLocalMockDemo(dbPath?: string) {
 
       db.prepare(
         `INSERT INTO share_ledgers (
-          skill_id, total_shares, author_shares, min_author_ratio_bps, contributor_count, last_snapshot_time
-        ) VALUES (?, 1000, 1000, ?, 0, ?)`
+          skill_id, author_ownership_bps, contributor_pool_bps, min_author_ratio_bps,
+          total_contributor_weight, contributor_count, points_per_100bps,
+          max_pool_increase_per_evaluation_bps, last_snapshot_time
+        ) VALUES (?, 10000, 0, ?, 0, 0, 250, 500, ?)`
       ).run(skillId, skill.floor, now);
 
       db.prepare(
         `INSERT INTO share_accounts (
-          holder, skill_id, shares, lock_until, first_contribution_at, last_contribution_at
-        ) VALUES (?, ?, 1000, 0, NULL, NULL)`
+          holder, skill_id, contribution_weight, lock_until, first_contribution_at, last_contribution_at
+        ) VALUES (?, ?, 0, 0, NULL, NULL)`
       ).run(author, skillId);
 
       db.prepare(
         `INSERT INTO revenue_pools (
           skill_id, current_period_revenue, total_lifetime_revenue, current_period_start,
-          period_length, snapshot_total_shares, last_settlement_time
-        ) VALUES (?, ?, 0, ?, 300, 1000, 0)`
+          period_length, snapshot_author_ownership_bps, snapshot_contributor_pool_bps, last_settlement_time
+        ) VALUES (?, ?, 0, ?, 300, 10000, 0, 0)`
       ).run(skillId, skill.price * skill.subscribers, now);
     }
   });

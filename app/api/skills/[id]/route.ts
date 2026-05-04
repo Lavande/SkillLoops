@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getDb } from "@/lib/db";
-import { caller, guarded, ApiError } from "@/lib/api-helpers";
+import { caller, guarded, ApiError, contributorOwnershipBps, ownershipPct } from "@/lib/api-helpers";
 import { now } from "@/lib/mock/clock";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     if (!skill) throw new ApiError(404, "skill_not_found");
     const ledger = db.prepare(`SELECT * FROM share_ledgers WHERE skill_id = ?`).get(params.id) as any;
     const holders = db
-      .prepare(`SELECT holder, shares, lock_until, first_contribution_at, last_contribution_at FROM share_accounts WHERE skill_id = ? ORDER BY shares DESC`)
+      .prepare(`SELECT holder, contribution_weight, lock_until, first_contribution_at, last_contribution_at FROM share_accounts WHERE skill_id = ? ORDER BY contribution_weight DESC`)
       .all(params.id) as any[];
     const versions = db
       .prepare(`SELECT * FROM skill_versions WHERE skill_id = ? ORDER BY version DESC`)
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       .prepare(`SELECT * FROM revenue_history WHERE skill_id = ? ORDER BY period_start ASC`)
       .all(params.id) as any[];
     const experiences = db
-      .prepare(`SELECT experience_id, contributor, skill_version, status, contribution_score, shares_minted, submitted_at, evaluated_at, arweave_tx_id FROM experiences WHERE skill_id = ? ORDER BY submitted_at DESC`)
+      .prepare(`SELECT experience_id, contributor, skill_version, status, contribution_score, contribution_weight_delta, ownership_delta_bps, submitted_at, evaluated_at, arweave_tx_id FROM experiences WHERE skill_id = ? ORDER BY submitted_at DESC`)
       .all(params.id) as any[];
 
     const subscription = self
@@ -37,8 +37,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const selfHasActiveSub = subscription && subscription.is_active && subscription.expiry_time > now();
     const selfIsShareholder =
       !!self &&
-      (db.prepare(`SELECT shares FROM share_accounts WHERE holder = ? AND skill_id = ?`).get(self, params.id) as any)
-        ?.shares > 0;
+      (db.prepare(`SELECT contribution_weight FROM share_accounts WHERE holder = ? AND skill_id = ?`).get(self, params.id) as any)
+        ?.contribution_weight > 0;
 
     return {
       skill: {
@@ -58,19 +58,34 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         totalRevenue: skill.total_revenue,
       },
       ledger: {
-        totalShares: ledger.total_shares,
-        authorShares: ledger.author_shares,
+        authorOwnershipBps: ledger.author_ownership_bps,
+        authorOwnershipPct: ownershipPct(ledger.author_ownership_bps),
+        contributorPoolBps: ledger.contributor_pool_bps,
+        contributorPoolPct: ownershipPct(ledger.contributor_pool_bps),
         minAuthorRatioBps: ledger.min_author_ratio_bps,
+        totalContributorWeight: ledger.total_contributor_weight,
         contributorCount: ledger.contributor_count,
       },
-      holders: holders.map((h) => ({
-        holder: h.holder,
-        shares: h.shares,
-        lockUntil: h.lock_until,
-        firstContributionAt: h.first_contribution_at,
-        lastContributionAt: h.last_contribution_at,
-        isAuthor: h.holder === skill.author,
-      })),
+      holders: holders.map((h) => {
+        const isAuthor = h.holder === skill.author;
+        const ownershipBps = isAuthor
+          ? ledger.author_ownership_bps
+          : contributorOwnershipBps({
+              contributorPoolBps: ledger.contributor_pool_bps,
+              contributionWeight: h.contribution_weight,
+              totalContributorWeight: ledger.total_contributor_weight,
+            });
+        return {
+          holder: h.holder,
+          role: isAuthor ? "author" : "contributor",
+          ownershipBps,
+          ownershipPct: ownershipPct(ownershipBps),
+          lockUntil: h.lock_until,
+          firstContributionAt: h.first_contribution_at,
+          lastContributionAt: h.last_contribution_at,
+          isAuthor,
+        };
+      }),
       versions: versions.map((v) => ({
         version: v.version,
         contentHash: v.content_hash,
@@ -96,7 +111,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         skillVersion: e.skill_version,
         status: e.status,
         contributionScore: e.contribution_score,
-        sharesMinted: e.shares_minted,
+        contributionWeightDelta: e.contribution_weight_delta,
+        ownershipDeltaBps: e.ownership_delta_bps,
+        ownershipDeltaPct: e.ownership_delta_bps == null ? null : ownershipPct(e.ownership_delta_bps),
         submittedAt: e.submitted_at,
         evaluatedAt: e.evaluated_at,
         arweaveTxId: e.arweave_tx_id,

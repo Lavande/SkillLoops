@@ -166,8 +166,8 @@ export default function PublishPage() {
       <aside className="col-span-12 lg:col-span-4">
         <LabeledBox title="PRINCIPLES" code="§ author">
           <ul className="font-mono text-xs leading-5 list-disc pl-4 text-ink/85">
-            <li>Every subscriber starts at 0 shares. Only merit grows the pie.</li>
-            <li>Your floor is protected: mints are capped so your ratio never drops below it.</li>
+            <li>Every subscriber starts at 0% ownership. Only useful contribution can grow it.</li>
+            <li>Your floor is protected: ownership changes stop before your ratio drops below it.</li>
             <li>All decrypted content is gated by active subscription via Lit.</li>
             <li>Every judge report is permanently auditable on Arweave.</li>
           </ul>

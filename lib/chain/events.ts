@@ -49,7 +49,6 @@ export type SlpEventName =
   | "Subscribed"
   | "ExperienceSubmitted"
   | "ExperienceEvaluated"
-  | "SharesMinted"
   | "PeriodSettled"
   | "RevenueClaimed"
   | "VersionPublished";
