@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/slp.json`.
  */
 export type Slp = {
-  "address": "5uTb4ZPTVB1HFMdTeBXELPzgaX2dcVRZoxPQW2SNzQAH",
+  "address": "BvgbBSJtRR8o6t6BpHVCGXymqgCwYSSWqneETJDdRU9t",
   "metadata": {
     "name": "slp",
     "version": "0.1.0",
@@ -1389,8 +1389,12 @@ export type Slp = {
             "type": "i64"
           },
           {
-            "name": "snapshotTotalShares",
-            "type": "u64"
+            "name": "snapshotAuthorOwnershipBps",
+            "type": "u16"
+          },
+          {
+            "name": "snapshotContributorPoolBps",
+            "type": "u16"
           },
           {
             "name": "snapshotId",

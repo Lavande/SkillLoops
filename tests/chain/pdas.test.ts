@@ -3,7 +3,7 @@ import { PublicKey } from "@solana/web3.js";
 import { createHash } from "node:crypto";
 import { pdas } from "@/lib/chain/pdas";
 
-const PROGRAM = new PublicKey("BnuTXrifL3hja2YeyMBpUVgRoJ5N6zrpH1hPmaDit1FJ");
+const PROGRAM = new PublicKey("BvgbBSJtRR8o6t6BpHVCGXymqgCwYSSWqneETJDdRU9t");
 const AUTHOR = new PublicKey("11111111111111111111111111111112");
 const HOLDER = new PublicKey("11111111111111111111111111111113");
 const SKILL = new PublicKey("11111111111111111111111111111114");

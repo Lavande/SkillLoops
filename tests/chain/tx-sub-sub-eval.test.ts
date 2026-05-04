@@ -7,7 +7,7 @@ import {
 import type { Signer } from "@/lib/chain/program";
 
 describe("tx builders — subscribe/submit/evaluate", () => {
-  const programId = new PublicKey("BnuTXrifL3hja2YeyMBpUVgRoJ5N6zrpH1hPmaDit1FJ");
+  const programId = new PublicKey("BvgbBSJtRR8o6t6BpHVCGXymqgCwYSSWqneETJDdRU9t");
   const user = Keypair.generate().publicKey;
   const judge = Keypair.generate().publicKey;
   const skill = Keypair.generate().publicKey;

@@ -5,7 +5,7 @@ import {
 } from "@/lib/chain/tx";
 
 describe("tx builders — settle/claim/publishVersion", () => {
-  const programId = new PublicKey("BnuTXrifL3hja2YeyMBpUVgRoJ5N6zrpH1hPmaDit1FJ");
+  const programId = new PublicKey("BvgbBSJtRR8o6t6BpHVCGXymqgCwYSSWqneETJDdRU9t");
   const payer = Keypair.generate().publicKey;
   const skill = Keypair.generate().publicKey;
   const alice = Keypair.generate().publicKey;

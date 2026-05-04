@@ -3,7 +3,7 @@ import { PublicKey, Keypair } from "@solana/web3.js";
 import { buildInitializeProtocolIx, buildPublishSkillIx } from "@/lib/chain/tx";
 
 describe("tx builders — initialize + publish", () => {
-  const programId = new PublicKey("BnuTXrifL3hja2YeyMBpUVgRoJ5N6zrpH1hPmaDit1FJ");
+  const programId = new PublicKey("BvgbBSJtRR8o6t6BpHVCGXymqgCwYSSWqneETJDdRU9t");
   const admin = Keypair.generate().publicKey;
   const judge = Keypair.generate().publicKey;
 

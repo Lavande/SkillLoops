@@ -164,7 +164,7 @@ describe("applyEvent projections (shape-only, no RPC fetch)", () => {
       arweaveTxId: "irys_bundle_tx",
       submittedAt: { toString: () => "1234" },
     });
-    process.env.NEXT_PUBLIC_SLP_PROGRAM_ID = "5uTb4ZPTVB1HFMdTeBXELPzgaX2dcVRZoxPQW2SNzQAH";
+    process.env.NEXT_PUBLIC_SLP_PROGRAM_ID = "BvgbBSJtRR8o6t6BpHVCGXymqgCwYSSWqneETJDdRU9t";
 
     await enrichAfterCommitForTest({} as any, db, ev);
 
@@ -192,7 +192,7 @@ describe("applyEvent projections (shape-only, no RPC fetch)", () => {
       subscriptionPrice: { toString: () => "100000000" },
       minAuthorRatioBps: 4000,
     });
-    process.env.NEXT_PUBLIC_SLP_PROGRAM_ID = "5uTb4ZPTVB1HFMdTeBXELPzgaX2dcVRZoxPQW2SNzQAH";
+    process.env.NEXT_PUBLIC_SLP_PROGRAM_ID = "BvgbBSJtRR8o6t6BpHVCGXymqgCwYSSWqneETJDdRU9t";
 
     await enrichAfterCommitForTest({} as any, db, ev);
 
@@ -229,7 +229,7 @@ describe("applyEvent projections (shape-only, no RPC fetch)", () => {
       evaluatedAt: { toString: () => "5678" },
       judgeReportTxId: "irys_judge_report_tx",
     });
-    process.env.NEXT_PUBLIC_SLP_PROGRAM_ID = "5uTb4ZPTVB1HFMdTeBXELPzgaX2dcVRZoxPQW2SNzQAH";
+    process.env.NEXT_PUBLIC_SLP_PROGRAM_ID = "BvgbBSJtRR8o6t6BpHVCGXymqgCwYSSWqneETJDdRU9t";
 
     await enrichAfterCommitForTest({} as any, db, evaluated);
 

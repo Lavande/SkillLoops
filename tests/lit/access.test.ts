@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildSkillAccessConditions } from "@/lib/lit/access";
 
-const programId = "5uTb4ZPTVB1HFMdTeBXELPzgaX2dcVRZoxPQW2SNzQAH";
+const programId = "BvgbBSJtRR8o6t6BpHVCGXymqgCwYSSWqneETJDdRU9t";
 const skillId = "7q6akTn3VYDoJjZ6Z8VFZrqmTuY7zj4KkT8hC8Q7DAoY";
 const author = "4oP88QmGg3TQeNYK8VfLR8EAwV96AcNmQMiYhDMnSCPu";
 
