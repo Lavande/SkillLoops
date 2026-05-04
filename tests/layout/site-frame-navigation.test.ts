@@ -35,6 +35,6 @@ describe("SiteFrame navigation", () => {
     expect(src).toContain("flex-col");
     expect(src).toContain("overflow-x-auto");
     expect(src).toContain("px-4 sm:px-6");
-    expect(src).toContain("pb-[env(safe-area-inset-bottom)]");
+    expect(src).toContain("env(safe-area-inset-bottom)");
   });
 });

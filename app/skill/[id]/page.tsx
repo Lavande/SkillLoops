@@ -36,6 +36,7 @@ export default function SkillPage({ params }: PageProps) {
   const [err, setErr] = useState<string | null>(null);
   const [signing, setSigning] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [previewCopied, setPreviewCopied] = useState(false);
   const [loopTrigger, setLoopTrigger] = useState(0);
   const prevContributorPool = useRef<number | null>(null);
   const [txStatus, setTxStatus] = useState<"idle" | "signing" | "confirming" | "confirmed" | "error">("idle");
@@ -125,6 +126,7 @@ export default function SkillPage({ params }: PageProps) {
         wallet: w,
         caller: wallet,
       });
+      setPreviewCopied(false);
       setPreview(plaintext);
     } catch (e: any) {
       setErr(e?.message ?? "decrypt failed");
@@ -145,6 +147,35 @@ export default function SkillPage({ params }: PageProps) {
   ) : (
     <Chip tone="muted">PUBLIC</Chip>
   );
+
+  async function onCopyPreview() {
+    if (!preview) return;
+    try {
+      await navigator.clipboard.writeText(preview);
+      setPreviewCopied(true);
+      window.setTimeout(() => setPreviewCopied(false), 1400);
+    } catch (e: any) {
+      setErr(e?.message ?? "copy failed");
+    }
+  }
+
+  function onDownloadPreview() {
+    if (!preview) return;
+    const blob = new Blob([preview], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = skillMarkdownFilename(skill.name, skill.skillId);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  function closePreview() {
+    setPreview(null);
+    setPreviewCopied(false);
+  }
 
   return (
     <div className="grid grid-cols-12 gap-6 pt-6">
@@ -247,13 +278,23 @@ export default function SkillPage({ params }: PageProps) {
 
       {/* Preview modal */}
       {preview ? (
-        <div className="fixed inset-0 z-40 bg-paper/80 backdrop-blur-sm flex items-center justify-center p-6" onClick={() => setPreview(null)}>
+        <div className="fixed inset-0 z-40 bg-paper/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6" onClick={closePreview}>
           <div className="corner-box max-h-[80vh] w-full max-w-3xl overflow-auto border border-ink bg-paper" onClick={(e) => e.stopPropagation()}>
-            <header className="flex items-center justify-between px-4 py-2 border-b border-ink">
+            <header className="flex flex-col gap-2 border-b border-ink px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <span className="caption">SKILL.md · DECRYPTED</span>
-              <button className="caption hover:text-accent" onClick={() => setPreview(null)}>close</button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" className="caption border border-ink px-2 py-1 hover:bg-ink hover:text-paper" onClick={onCopyPreview}>
+                  {previewCopied ? "copied" : "copy"}
+                </button>
+                <button type="button" className="caption border border-ink px-2 py-1 hover:bg-ink hover:text-paper" onClick={onDownloadPreview}>
+                  download .md
+                </button>
+                <button type="button" className="caption px-2 py-1 hover:text-accent" onClick={closePreview}>
+                  close
+                </button>
+              </div>
             </header>
-            <pre className="whitespace-pre-wrap break-words p-4 font-mono text-xs leading-5">{preview.slice(0, 5000)}</pre>
+            <pre className="whitespace-pre-wrap break-words p-4 font-mono text-xs leading-5">{preview}</pre>
           </div>
         </div>
       ) : null}
@@ -261,6 +302,18 @@ export default function SkillPage({ params }: PageProps) {
       <PhantomSignPending open={!!signing} label={signing ?? ""} />
     </div>
   );
+}
+
+function skillMarkdownFilename(name: string, skillId: string): string {
+  const safeName = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+  const fallbackName = `skill-${skillId.slice(0, 8) || "source"}`;
+
+  return `${safeName || fallbackName}-SKILL.md`;
 }
 
 function ExperienceRow({ exp }: { exp: any }) {
