@@ -63,7 +63,7 @@ export function SkillLoopMotif({ size = 340, spinTrigger = 0, active = null, cla
       viewBox={`0 0 ${size} ${size}`}
       width={size}
       height={size}
-      className={cn("h-auto max-w-full text-ink", className)}
+      className={cn("h-auto max-w-full overflow-visible text-ink", className)}
       aria-label="Skill Loop diagram"
     >
       {/* background grid */}

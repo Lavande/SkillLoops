@@ -1,4 +1,4 @@
-export const K_DEFAULT = 10;
+export const K_DEFAULT = 100;
 export const MIN_APPROVE_SCORE = 20;
 export const MAX_SCORE = 50;
 export const OWNERSHIP_BPS = 10000;

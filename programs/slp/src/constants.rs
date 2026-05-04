@@ -1,7 +1,7 @@
 pub const MIN_APPROVE_SCORE: u8 = 20;
 pub const MAX_SCORE: u8 = 50;
 
-pub const K_DEFAULT: u16 = 10;
+pub const K_DEFAULT: u16 = 100;
 pub const K_MIN: u16 = 1;
 pub const K_MAX: u16 = 100;
 

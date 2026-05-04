@@ -14,6 +14,7 @@ import { publishSkill } from "@/lib/chain/tx";
 import { pdas } from "@/lib/chain/pdas";
 import { uploadObject } from "@/lib/browser-irys";
 import { encryptSkillContent } from "@/lib/lit/client";
+import { K_DEFAULT } from "@/lib/domain/thresholds";
 
 type TxState = "idle" | "signing" | "confirming" | "confirmed" | "error";
 
@@ -78,7 +79,7 @@ export default function PublishPage() {
         arweaveTxId: upload.txId,
         subscriptionPriceLamports: BigInt(Math.floor(form.subscription_price_sol * LAMPORTS_PER_SOL)),
         minAuthorRatioBps: form.min_author_ratio_bps,
-        k: 10,
+        k: K_DEFAULT,
         periodLengthSeconds: 300n,
       });
       setTxSig(result.sig);

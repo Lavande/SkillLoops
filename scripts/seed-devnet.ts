@@ -8,6 +8,7 @@ import { getConnection } from "../lib/chain/connection";
 import { getChainConfig } from "../lib/chain/config";
 import { publishSkill } from "../lib/chain/tx";
 import { loadPersonaSigners } from "../lib/personas";
+import { K_DEFAULT } from "../lib/domain/thresholds";
 
 const SKILLS = [
   { name: "GitHub PR Review", desc: "Reviews PRs for tests, style, security, safety.", cat: "coding", price: 0.1, floor: 4000, periodLengthSeconds: 60n },
@@ -37,7 +38,7 @@ async function main() {
         name: s.name, description: s.desc, category: s.cat,
         content, arweaveTxId: upload.txId,
         subscriptionPriceLamports: BigInt(Math.floor(s.price * LAMPORTS_PER_SOL)),
-        minAuthorRatioBps: s.floor, k: 10, periodLengthSeconds: s.periodLengthSeconds,
+        minAuthorRatioBps: s.floor, k: K_DEFAULT, periodLengthSeconds: s.periodLengthSeconds,
       });
       console.log(`  sig=${result.sig}  skill=${result.skillId}`);
     } catch (e: any) {

@@ -70,6 +70,18 @@ describe("evaluateContributionOwnership", () => {
     expect(result.newContributor.contribution_weight).toBe(1250);
   });
 
+  it("uses k=100 by default so first strong contributions show ownership", () => {
+    const result = evaluateContributionOwnership({
+      score: 47,
+      ledger: baseLedger(),
+      contributor: baseContributor(),
+    });
+
+    expect(result.contributionWeightDelta).toBe(1175);
+    expect(result.ownershipDeltaBps).toBe(400);
+    expect(result.newLedger.contributor_pool_bps).toBe(400);
+  });
+
   it("moves three strong contributors in sequence while staying above the author floor", () => {
     let ledger = baseLedger();
 

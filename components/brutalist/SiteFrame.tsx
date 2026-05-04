@@ -9,8 +9,8 @@ export function SiteFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const cluster = process.env.NEXT_PUBLIC_SOLANA_CLUSTER ?? "devnet";
   const networkLabel = cluster === "mainnet-beta" ? "mainnet" : cluster;
-  // The /deck presentation takes over the viewport so the slides own the screen.
-  if (pathname?.startsWith("/deck")) {
+  // Presentation routes take over the viewport so the slides own the screen.
+  if (pathname?.startsWith("/deck") || pathname?.startsWith("/pitch")) {
     return <>{children}</>;
   }
 
@@ -31,6 +31,7 @@ export function SiteFrame({ children }: { children: ReactNode }) {
               <Link href="/submit" className="accent-underline whitespace-nowrap">Submit</Link>
               <Link href="/reflection-skill" className="accent-underline whitespace-nowrap">Reflection</Link>
               <Link href="/deck" className="accent-underline whitespace-nowrap">Deck</Link>
+              <Link href="/pitch" className="accent-underline whitespace-nowrap">Pitch</Link>
               <Link href="/me" className="accent-underline whitespace-nowrap">Me</Link>
             </div>
           </nav>
