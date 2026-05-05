@@ -30,8 +30,6 @@ export function SiteFrame({ children }: { children: ReactNode }) {
               <Link href="/publish" className="accent-underline whitespace-nowrap">Publish</Link>
               <Link href="/submit" className="accent-underline whitespace-nowrap">Submit</Link>
               <Link href="/reflection-skill" className="accent-underline whitespace-nowrap">Reflection</Link>
-              <Link href="/deck" className="accent-underline whitespace-nowrap">Deck</Link>
-              <Link href="/pitch" className="accent-underline whitespace-nowrap">Pitch</Link>
               <Link href="/me" className="accent-underline whitespace-nowrap">Me</Link>
             </div>
           </nav>

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Chip } from "@/components/brutalist/Chip";
 import { SkillLoopMotif } from "@/components/loop/SkillLoopMotif";
 import { cn } from "@/lib/cn";
 
@@ -23,71 +22,55 @@ const FLOW = [
 
 const SLIDES: PitchSlide[] = [
   {
+    eyebrow: "COLD OPEN",
+    caption: "Skill Loops Protocol / cold open",
+    render: () => <ColdOpenSlide />,
+  },
+
+  {
     eyebrow: "TITLE CARD",
     caption: "SkillLoops Protocol / opening",
     render: () => (
       <div className="grid min-h-full grid-cols-12 items-stretch gap-6">
-        {/* left margin metadata column — gives the title slide a "documented" feel */}
-        <aside className="col-span-12 lg:col-span-1 lg:flex lg:flex-col lg:justify-between">
-          <ul className="hidden lg:block space-y-3 font-mono text-[9px] uppercase tracking-[0.22em] text-muted">
-            <MetaRow k="FILE" v="SLP-001" />
-            <MetaRow k="REV" v="A · 1.0" />
-            <MetaRow k="CHAIN" v="SOLANA" />
-            <MetaRow k="NET" v="DEVNET" />
-            <MetaRow k="DATE" v="2026-05" />
-          </ul>
-          <div className="hidden lg:flex flex-col gap-1 font-mono text-[9px] uppercase tracking-[0.22em] text-muted">
-            <span>SIGNED</span>
-            <span className="text-ink">SLP CORE TEAM</span>
-            <SignatureGlyph />
-          </div>
-        </aside>
-
         <section className="col-span-12 lg:col-span-7 flex flex-col justify-center">
-          <div className="caption mb-5 flex items-center gap-3">
+          <motion.div
+            className="caption mb-5 flex items-center gap-3"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
             <span>SOLANA HACKATHON</span>
             <span className="text-ink/30">·</span>
-            <span>PRODUCT DEMO</span>
-            <span className="text-ink/30">·</span>
-            <span className="text-accent">CARD 01</span>
-          </div>
-          <h1 className="font-display text-[clamp(4rem,10vw,9.5rem)] font-bold uppercase leading-[0.86] tracking-[-0.02em]">
+            <span className="text-accent">DEMO</span>
+          </motion.div>
+          <motion.h1
+            className="font-display text-[clamp(3rem,7.5vw,7rem)] font-bold uppercase leading-[0.88] tracking-[-0.02em] break-words"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, ease: [0.22, 0.61, 0.36, 1], delay: 0.1 }}
+          >
             SkillLoops<br />
             <span className="text-accent">Protocol</span>
             <span className="ml-2 inline-block h-[0.18em] w-[0.18em] translate-y-[-0.18em] bg-accent" />
-          </h1>
-          <p className="mt-7 max-w-3xl font-serif text-[clamp(1.45rem,2.4vw,2.35rem)] leading-[1.18]">
-            A marketplace where AI skill users earn ownership by contributing useful
-            real-world experience.
-          </p>
-
-          <div className="mt-8 flex flex-wrap items-end gap-4">
-            <ChipStack tone="ink" label="LAYER 01" body="AI skills" />
-            <ChipStack tone="ghost" label="LAYER 02" body="AI agents" />
-            <ChipStack tone="accent" label="LAYER 03" body="AI judges" />
-          </div>
+          </motion.h1>
+          <motion.p
+            className="mt-8 max-w-3xl font-serif text-[clamp(1.55rem,2.6vw,2.5rem)] leading-[1.18]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.35 }}
+          >
+            Use a skill. Improve it. <span className="text-accent">Own a piece of it.</span>
+          </motion.p>
         </section>
 
-        <aside className="col-span-12 lg:col-span-4 flex flex-col">
+        <aside className="col-span-12 lg:col-span-5 flex flex-col">
           <header className="flex items-center justify-between border-x border-t border-ink bg-paper-raised px-3 py-2">
-            <span className="caption">FIG. 01 · LOOP DIAGRAM</span>
+            <span className="caption">FIG. 01 · LOOP</span>
             <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-accent">LIVE</span>
           </header>
           <div className="flex flex-1 items-center justify-center border border-ink bg-paper-raised p-4">
-            <SkillLoopMotif size={340} active="REFLECT" />
+            <SkillLoopMotif size={360} active="REFLECT" />
           </div>
-          <footer className="grid grid-cols-3 border-x border-b border-ink bg-paper">
-            {[
-              ["Ø", "336"],
-              ["STAGES", "5"],
-              ["REV", "1.0"],
-            ].map(([k, v]) => (
-              <div key={k} className="border-r border-ink last:border-r-0 px-3 py-2">
-                <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted">{k}</div>
-                <div className="font-display text-base uppercase">{v}</div>
-              </div>
-            ))}
-          </footer>
         </aside>
       </div>
     ),
@@ -95,130 +78,136 @@ const SLIDES: PitchSlide[] = [
 
   {
     eyebrow: "PROBLEM",
-    caption: "Why the market needs a loop",
+    caption: "Skills decay after sale",
     render: () => (
       <div className="flex min-h-full flex-col justify-center">
-        <div className="caption mb-5 flex items-center gap-3">
+        <motion.div
+          className="caption mb-5 flex items-center gap-3"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
           <span>TODAY</span>
           <span className="text-ink/30">·</span>
-          <span>STATIC SKILL MARKET</span>
-          <span className="text-ink/30">·</span>
-          <span className="text-accent">3 FAILURE MODES</span>
-        </div>
-        <h2 className="max-w-5xl font-display text-[clamp(3.2rem,8vw,7.2rem)] font-bold uppercase leading-[0.9] tracking-[-0.02em]">
+          <span className="text-accent">THE PROBLEM</span>
+        </motion.div>
+        <motion.h2
+          className="max-w-5xl font-display text-[clamp(3.6rem,9vw,8rem)] font-bold uppercase leading-[0.9] tracking-[-0.02em]"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: [0.22, 0.61, 0.36, 1], delay: 0.08 }}
+        >
           Skills decay<br />
           <span className="text-accent">after sale</span>.
-        </h2>
-        <p className="mt-6 max-w-4xl font-serif text-[clamp(1.35rem,2.2vw,2.1rem)] leading-[1.22]">
-          APIs move. Models change. Edge cases appear. The best signal is the failed run,
-          but today it usually disappears.
-        </p>
+        </motion.h2>
 
-        <div className="mt-10 grid grid-cols-1 border border-ink bg-paper md:grid-cols-3">
-          <ProblemCell
-            no="01"
-            title="Seller Ships Once"
-            body="A skill leaves the author as a static file."
-            glyph={<GlyphShipOnce />}
-          />
-          <ProblemCell
-            no="02"
-            title="Buyer Finds Failures"
-            body="Real usage creates the strongest improvement signal."
-            glyph={<GlyphLostSignal />}
-          />
-          <ProblemCell
-            no="03"
-            title="Signal Is Lost"
-            body="There is no native way to price or reward the lesson."
-            glyph={<GlyphDeadEnd />}
-            last
-          />
-        </div>
+        <motion.div
+          className="mt-12 grid grid-cols-1 border border-ink bg-paper md:grid-cols-3"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.12, delayChildren: 0.35 } },
+          }}
+        >
+          <ProblemCell no="01" title="Ship once" glyph={<GlyphShipOnce />} />
+          <ProblemCell no="02" title="Fail in the wild" glyph={<GlyphLostSignal />} />
+          <ProblemCell no="03" title="Signal lost" glyph={<GlyphDeadEnd />} last />
+        </motion.div>
       </div>
     ),
   },
 
   {
-    eyebrow: "MECHANISM",
-    caption: "The Reflection Skill turns failures into submissions",
-    render: () => (
-      <div className="grid min-h-full grid-cols-12 items-center gap-8">
-        <section className="col-span-12 lg:col-span-7">
-          <div className="caption mb-5 flex items-center gap-3">
-            <span>THE LOOP</span>
-            <span className="text-ink/30">·</span>
-            <span>SIMPLE VERSION</span>
-          </div>
-          <h2 className="font-display text-[clamp(3.2rem,7.8vw,7rem)] font-bold uppercase leading-[0.9] tracking-[-0.02em]">
-            Use.<br />
-            Reflect.<br />
-            <span className="text-accent">Submit.</span>
-          </h2>
-
-          {/* arrow micro-strip mirroring the loop's three highlighted moves */}
-          <div className="mt-7 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em]">
-            <ArrowTag>USE</ArrowTag>
-            <Connector />
-            <ArrowTag>REFLECT</ArrowTag>
-            <Connector />
-            <ArrowTag accent>SUBMIT</ArrowTag>
-          </div>
-
-          <p className="mt-7 max-w-3xl font-serif text-[clamp(1.35rem,2.1vw,2rem)] leading-[1.24]">
-            The Reflection Skill turns a failed agent run into root cause, a concrete
-            patch, and a reproducible test case.
-          </p>
-        </section>
-
-        <aside className="col-span-12 border border-ink bg-paper lg:col-span-5">
-          <header className="flex items-center justify-between border-b border-ink px-4 py-3">
-            <span className="caption">ExperienceBundle.json</span>
-            <Chip tone="accent">schema valid</Chip>
-          </header>
-          <div className="flex items-center justify-between border-b border-ink bg-paper-raised px-4 py-1.5 font-mono text-[9px] uppercase tracking-[0.18em] text-muted">
-            <span>POST /submit</span>
-            <span>200 · 142 ms</span>
-          </div>
-          <pre className="max-h-[480px] overflow-hidden bg-ink p-5 font-mono text-[12px] leading-6 text-paper">
-            <CodeLine no={1} text='{' />
-            <CodeLine no={2} k='"failure_mode"' v='"missed Rust unsafe risk"' comma />
-            <CodeLine no={3} k='"root_cause_analysis"' v='"the skill has no' />
-            <CodeLine no={4} text='    language-specific safety branch",' />
-            <CodeLine no={5} k='"proposed_patch"' raw='{' />
-            <CodeLine no={6} k='"type"' v='"new_step"' indent comma />
-            <CodeLine no={7} k='"target_section"' v='"Review checklist"' indent />
-            <CodeLine no={8} text='  },' />
-            <CodeLine no={9} k='"test_case"' v='"PR with unsafe block"' />
-            <CodeLine no={10} text='}' />
-          </pre>
-        </aside>
-      </div>
-    ),
-  },
-
-  {
-    eyebrow: "PROTOCOL PROOF",
-    caption: "Signed actions, permanent records, shared revenue",
+    eyebrow: "THE LOOP",
+    caption: "Use → Reflect → Submit → Judge → Own",
     render: () => (
       <div className="flex min-h-full flex-col justify-center">
-        <div className="caption mb-5 flex items-center gap-3">
-          <span>WHAT CHANGES STATE</span>
+        <motion.div
+          className="caption mb-5 flex items-center gap-3"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <span>OUR FIX</span>
+          <span className="text-ink/30">·</span>
+          <span className="text-accent">ONE LOOP</span>
+        </motion.div>
+        <motion.h2
+          className="font-display text-[clamp(3.6rem,9vw,8rem)] font-bold uppercase leading-[0.9] tracking-[-0.02em]"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: [0.22, 0.61, 0.36, 1], delay: 0.08 }}
+        >
+          Close <span className="text-accent">the loop</span>.
+        </motion.h2>
+
+        <motion.div
+          className="mt-12 flex flex-wrap items-center gap-2 font-mono text-[12px] uppercase tracking-[0.18em]"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.12, delayChildren: 0.3 } },
+          }}
+        >
+          <StageTag label="USE" />
+          <StageArrow />
+          <StageTag label="REFLECT" />
+          <StageArrow />
+          <StageTag label="SUBMIT" />
+          <StageArrow />
+          <StageTag label="JUDGE" />
+          <StageArrow />
+          <StageTag label="OWN" accent />
+        </motion.div>
+      </div>
+    ),
+  },
+
+  {
+    eyebrow: "PROOF",
+    caption: "Five signed moves on Solana",
+    render: () => (
+      <div className="flex min-h-full flex-col justify-center">
+        <motion.div
+          className="caption mb-5 flex items-center gap-3"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <span>ON-CHAIN</span>
           <span className="text-ink/30">·</span>
           <span className="text-accent">5 SIGNED MOVES</span>
-        </div>
-        <h2 className="max-w-6xl font-display text-[clamp(3rem,7vw,6.4rem)] font-bold uppercase leading-[0.92] tracking-[-0.02em]">
-          Signed actions.<br />
-          <span className="text-accent">Permanent records.</span><br />
-          Shared revenue.
-        </h2>
+        </motion.div>
+        <motion.h2
+          className="max-w-6xl font-display text-[clamp(3.4rem,8vw,7.2rem)] font-bold uppercase leading-[0.9] tracking-[-0.02em]"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: [0.22, 0.61, 0.36, 1], delay: 0.08 }}
+        >
+          Every move<br />
+          <span className="text-accent">is signed</span>.
+        </motion.h2>
 
-        <div className="mt-10 relative grid grid-cols-1 border border-ink bg-paper md:grid-cols-5">
+        <motion.div
+          className="mt-12 relative grid grid-cols-1 border border-ink bg-paper md:grid-cols-5"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.08, delayChildren: 0.3 } },
+          }}
+        >
           {FLOW.map((step, index) => (
-            <div
+            <motion.div
               key={step.id}
+              variants={{
+                hidden: { opacity: 0, y: 10 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.35 } },
+              }}
               className={cn(
-                "relative flex min-h-[200px] flex-col p-4",
+                "relative flex min-h-[170px] flex-col p-4",
                 index < FLOW.length - 1 && "border-b border-ink md:border-b-0 md:border-r"
               )}
             >
@@ -232,24 +221,16 @@ const SLIDES: PitchSlide[] = [
                   </span>
                 )}
               </div>
-              <div className="mt-8 font-display text-xl font-semibold uppercase tracking-[0.06em]">
+              <div className="mt-auto font-display text-xl font-semibold uppercase tracking-[0.06em]">
                 {step.label}
               </div>
-              <div className="mt-2 font-mono text-[11px] uppercase leading-5 tracking-[0.1em] text-muted">
-                {step.hint}
-              </div>
-              <div className="mt-auto pt-4 border-t border-ink/15 font-mono text-[9px] uppercase leading-4 tracking-[0.16em] text-ink/60">
+              <div className="mt-1 font-mono text-[10px] uppercase leading-4 tracking-[0.16em] text-ink/60">
                 <span className="text-accent">∎ </span>
                 {step.sig}
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
-
-        <div className="mt-3 flex items-center justify-between font-mono text-[9px] uppercase tracking-[0.22em] text-muted">
-          <span>EACH MOVE WRITES TO ARWEAVE · IRREVERSIBLE</span>
-          <span>CHAIN ↦ SOLANA / DEVNET</span>
-        </div>
+        </motion.div>
       </div>
     ),
   },
@@ -258,76 +239,92 @@ const SLIDES: PitchSlide[] = [
     eyebrow: "CLOSING",
     caption: "Failures become ownership",
     render: () => (
-      <div className="grid min-h-full grid-cols-12 items-center gap-8">
-        <section className="col-span-12 lg:col-span-7">
-          <div className="caption mb-5 flex items-center gap-3">
-            <span>OUTCOME</span>
-            <span className="text-ink/30">·</span>
-            <span>THE LOOP CLOSES</span>
-            <span className="text-ink/30">·</span>
-            <span className="text-accent">CARD 05/05</span>
-          </div>
-          <h2 className="font-display text-[clamp(3.5rem,8.6vw,7.8rem)] font-bold uppercase leading-[0.88] tracking-[-0.02em]">
-            Failures become<br />
-            <span className="text-accent">ownership</span>.
-          </h2>
-          <p className="mt-7 max-w-3xl font-serif text-[clamp(1.35rem,2.2vw,2.1rem)] leading-[1.24]">
-            SkillLoops turns real agent experience into an improvement path, an audit
-            trail, and an economic stake.
-          </p>
+      <div className="flex min-h-full flex-col justify-center">
+        <motion.div
+          className="caption mb-5 flex items-center gap-3"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <span>OUTCOME</span>
+          <span className="text-ink/30">·</span>
+          <span className="text-accent">THE LOOP CLOSES</span>
+        </motion.div>
+        <motion.h2
+          className="font-display text-[clamp(4rem,10vw,9.6rem)] font-bold uppercase leading-[0.86] tracking-[-0.02em]"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: [0.22, 0.61, 0.36, 1], delay: 0.08 }}
+        >
+          Failures become<br />
+          <motion.span
+            className="text-accent inline-block"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+          >
+            ownership
+          </motion.span>
+          <motion.span
+            className="ml-2 inline-block h-[0.18em] w-[0.18em] translate-y-[-0.18em] bg-accent"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.95 }}
+          />
+        </motion.h2>
 
-          <div className="mt-8 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
-            <Link
-              href="/market"
-              className="border border-ink bg-paper px-3 py-1.5 text-ink hover:bg-ink hover:text-paper transition-colors"
-            >
-              Enter market →
-            </Link>
-            <Link
-              href="/deck"
-              className="border border-ink bg-paper px-3 py-1.5 text-ink hover:bg-ink hover:text-paper transition-colors"
-            >
-              Long deck →
-            </Link>
-            <span className="text-ink/40">·</span>
-            <span>skillloops.xyz</span>
-          </div>
-        </section>
+        <motion.div
+          className="mt-12 flex items-center gap-4 font-mono text-[10px] uppercase tracking-[0.22em] text-muted"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.7 }}
+        >
+          <ClosedStamp />
+          <span className="text-ink/30">·</span>
+          <span>skillloops.xyz</span>
+        </motion.div>
+      </div>
+    ),
+  },
 
-        <aside className="col-span-12 lg:col-span-5">
-          <div className="border border-ink bg-paper-raised">
-            <header className="flex items-center justify-between border-b border-ink px-4 py-3">
-              <span className="caption">FINAL STATE</span>
-              <Chip tone="accent">closed loop</Chip>
-            </header>
-            <div className="grid grid-cols-[1fr_120px]">
-              <div className="divide-y divide-ink/20 border-r border-ink/15 p-4">
-                <ProofRow
-                  mark="01"
-                  title="Failure captured"
-                  body="The failed run is no longer discarded."
-                />
-                <ProofRow
-                  mark="02"
-                  title="Usefulness scored"
-                  body="The judge turns quality into contribution weight."
-                />
-                <ProofRow
-                  mark="03"
-                  title="Skill evolves"
-                  body="The next version carries contributor history forward."
-                />
-              </div>
-              <div className="flex items-center justify-center p-3">
-                <ClosedLoopGlyph />
-              </div>
-            </div>
-            <footer className="border-t border-ink px-4 py-2 font-mono text-[9px] uppercase tracking-[0.2em] text-muted flex items-center justify-between">
-              <span>SIGNED · v1.0 · SLP CORE</span>
-              <ClosedStamp />
-            </footer>
-          </div>
-        </aside>
+  {
+    eyebrow: "ROADMAP",
+    caption: "What ships next",
+    render: () => (
+      <div className="flex min-h-full flex-col justify-center">
+        <motion.div
+          className="caption mb-5 flex items-center gap-3"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <span>NEXT</span>
+          <span className="text-ink/30">·</span>
+          <span className="text-accent">ROADMAP</span>
+        </motion.div>
+        <motion.h2
+          className="max-w-5xl font-display text-[clamp(3.4rem,8vw,7.2rem)] font-bold uppercase leading-[0.9] tracking-[-0.02em]"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: [0.22, 0.61, 0.36, 1], delay: 0.08 }}
+        >
+          What <span className="text-accent">ships next</span>.
+        </motion.h2>
+
+        <motion.div
+          className="mt-12 grid grid-cols-1 border border-ink bg-paper md:grid-cols-4"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.1, delayChildren: 0.3 } },
+          }}
+        >
+          <RoadmapCell no="01" tag="NEXT" title="Judge DAO" sub="Stake & slash for fair scores" />
+          <RoadmapCell no="02" tag="NEXT" title="Arbitration" sub="Appeal a disputed score" />
+          <RoadmapCell no="03" tag="LATER" title="Tradeable shares" sub="Sell your stake on the open market" />
+          <RoadmapCell no="04" tag="VISION" title="A2A network" sub="Agents improve skills on their own" last />
+        </motion.div>
       </div>
     ),
   },
@@ -367,7 +364,7 @@ export default function PitchPage() {
         go(0);
       } else if (event.key === "End") {
         go(total - 1);
-      } else if (/^[1-5]$/.test(event.key)) {
+      } else if (/^[1-9]$/.test(event.key)) {
         go(Number(event.key) - 1);
       }
     }
@@ -510,58 +507,31 @@ export default function PitchPage() {
   );
 }
 
-function MetaRow({ k, v }: { k: string; v: string }) {
-  return (
-    <li className="flex flex-col gap-0.5">
-      <span className="text-ink/45">{k}</span>
-      <span className="text-ink">{v}</span>
-    </li>
-  );
-}
-
-function ChipStack({ tone, label, body }: { tone: "ink" | "ghost" | "accent"; label: string; body: string }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-muted">{label}</span>
-      <Chip tone={tone}>{body}</Chip>
-    </div>
-  );
-}
-
 function ProblemCell({
   no,
   title,
-  body,
   glyph,
   last = false,
 }: {
   no: string;
   title: string;
-  body: string;
   glyph?: ReactNode;
   last?: boolean;
 }) {
   return (
-    <div className={cn("relative flex min-h-[200px] flex-col p-5", !last && "border-b border-ink md:border-b-0 md:border-r")}>
+    <motion.div
+      className={cn("relative flex min-h-[180px] flex-col p-5", !last && "border-b border-ink md:border-b-0 md:border-r")}
+      variants={{
+        hidden: { opacity: 0, y: 10 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
+      }}
+    >
       <div className="flex items-start justify-between">
         <div className="font-display text-5xl font-semibold leading-none text-accent">{no}</div>
         <div className="text-ink/70">{glyph}</div>
       </div>
-      <h3 className="mt-6 font-display text-2xl font-semibold uppercase leading-none tracking-[0.06em]">{title}</h3>
-      <p className="mt-3 font-mono text-[12px] uppercase leading-5 tracking-[0.1em] text-muted">{body}</p>
-    </div>
-  );
-}
-
-function ProofRow({ mark, title, body }: { mark: string; title: string; body: string }) {
-  return (
-    <div className="grid grid-cols-[3rem_1fr] gap-4 py-5 first:pt-1 last:pb-1">
-      <div className="font-display text-4xl font-semibold leading-none text-accent">{mark}</div>
-      <div>
-        <div className="font-display text-xl font-semibold uppercase leading-none tracking-[0.06em]">{title}</div>
-        <div className="mt-2 font-mono text-[11px] uppercase leading-5 tracking-[0.1em] text-muted">{body}</div>
-      </div>
-    </div>
+      <h3 className="mt-auto font-display text-3xl font-semibold uppercase leading-none tracking-[0.04em]">{title}</h3>
+    </motion.div>
   );
 }
 
@@ -615,80 +585,182 @@ function DraftWatermark() {
   );
 }
 
-function SignatureGlyph() {
+/* ── cold-open slide ──────────────────────────────────────────────────── */
+
+function ColdOpenSlide() {
   return (
-    <svg width="60" height="22" viewBox="0 0 60 22" aria-hidden className="text-ink/70">
-      <path
-        d="M 2 14 C 8 4, 14 22, 20 12 S 30 4, 36 14 S 50 18, 58 8"
-        stroke="currentColor"
-        strokeWidth="0.8"
-        fill="none"
+    <div className="relative flex min-h-full flex-col items-center justify-center overflow-hidden">
+      {/* faint grid wash to keep the brand texture, behind the loop */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.35]"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, rgba(11,11,11,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(11,11,11,0.08) 1px, transparent 1px)",
+          backgroundSize: "32px 32px",
+        }}
       />
-      <line x1="2" y1="20" x2="58" y2="20" stroke="currentColor" strokeWidth="0.4" strokeDasharray="1 2" />
-    </svg>
+      {/* corner registration ticks */}
+      <ColdOpenTicks />
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92, rotate: -2 }}
+        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+        transition={{ duration: 1.0, ease: [0.22, 0.61, 0.36, 1] }}
+        className="relative"
+      >
+        {/* radial accent halo */}
+        <motion.div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10 blur-2xl"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1.4, delay: 0.2 }}
+          style={{
+            background:
+              "radial-gradient(closest-side, rgba(255,91,31,0.18), rgba(255,91,31,0) 70%)",
+          }}
+        />
+        <SkillLoopMotif size={420} active="REFLECT" spinTrigger={1} />
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, ease: [0.22, 0.61, 0.36, 1], delay: 0.55 }}
+        className="relative mt-10 text-center"
+      >
+        <div className="font-mono text-[10px] uppercase tracking-[0.42em] text-muted">
+          Solana Hackathon · Demo
+        </div>
+        <h1 className="mt-3 font-display text-[clamp(3.4rem,8vw,7.6rem)] font-bold uppercase leading-[0.86] tracking-[-0.01em]">
+          Skill Loops <span className="text-accent">Protocol</span>
+          <motion.span
+            className="ml-2 inline-block h-[0.18em] w-[0.18em] translate-y-[-0.18em] bg-accent"
+            initial={{ scale: 0 }}
+            animate={{ scale: [0, 1, 1, 0.6, 1] }}
+            transition={{ duration: 1.4, delay: 1.0, times: [0, 0.3, 0.55, 0.75, 1] }}
+          />
+        </h1>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 1.1 }}
+        className="relative mt-6 flex items-center gap-3 font-mono text-[9px] uppercase tracking-[0.32em] text-muted"
+      >
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
+        </span>
+        <span>SLP · v1.0</span>
+        <span className="text-ink/30">·</span>
+        <span>begin</span>
+      </motion.div>
+    </div>
   );
 }
 
-/* ── slide-03 helpers ──────────────────────────────────────────────────── */
-
-function ArrowTag({ children, accent = false }: { children: ReactNode; accent?: boolean }) {
+function ColdOpenTicks() {
   return (
-    <span
+    <>
+      <div className="pointer-events-none absolute left-6 top-6 flex items-center gap-1 font-mono text-[8px] uppercase tracking-[0.3em] text-ink/40">
+        <span className="h-2 w-2 border-l border-t border-ink/40" />
+        <span>SLP-001</span>
+      </div>
+      <div className="pointer-events-none absolute right-6 top-6 flex items-center gap-1 font-mono text-[8px] uppercase tracking-[0.3em] text-ink/40">
+        <span>DEVNET</span>
+        <span className="h-2 w-2 border-r border-t border-ink/40" />
+      </div>
+      <div className="pointer-events-none absolute bottom-6 left-6 flex items-center gap-1 font-mono text-[8px] uppercase tracking-[0.3em] text-ink/40">
+        <span className="h-2 w-2 border-b border-l border-ink/40" />
+        <span>card 00</span>
+      </div>
+      <div className="pointer-events-none absolute bottom-6 right-6 flex items-center gap-1 font-mono text-[8px] uppercase tracking-[0.3em] text-ink/40">
+        <span>↻ loop</span>
+        <span className="h-2 w-2 border-b border-r border-ink/40" />
+      </div>
+    </>
+  );
+}
+
+/* ── loop slide helpers ──────────────────────────────────────────────── */
+
+function StageTag({ label, accent = false }: { label: string; accent?: boolean }) {
+  return (
+    <motion.span
+      variants={{
+        hidden: { opacity: 0, y: 6 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.32 } },
+      }}
       className={cn(
-        "inline-flex items-center border border-ink px-2 py-1",
+        "inline-flex items-center border border-ink px-3 py-2 font-display text-base font-semibold uppercase tracking-[0.08em]",
         accent ? "bg-accent text-ink" : "bg-paper text-ink"
       )}
     >
-      {children}
-    </span>
+      {label}
+    </motion.span>
   );
 }
 
-function Connector() {
+function StageArrow() {
   return (
-    <span aria-hidden className="inline-flex items-center text-ink/40">
+    <motion.span
+      aria-hidden
+      variants={{
+        hidden: { opacity: 0, x: -4 },
+        visible: { opacity: 1, x: 0, transition: { duration: 0.32 } },
+      }}
+      className="inline-flex items-center text-ink/45"
+    >
       <span className="block h-px w-6 bg-current" />
       <span className="-ml-[3px]">▸</span>
-    </span>
+    </motion.span>
   );
 }
 
-function CodeLine({
+/* ── roadmap slide helpers ───────────────────────────────────────────── */
+
+function RoadmapCell({
   no,
-  k,
-  v,
-  text,
-  raw,
-  comma,
-  indent,
+  tag,
+  title,
+  sub,
+  last = false,
 }: {
-  no: number;
-  k?: string;
-  v?: string;
-  text?: string;
-  /** rendered after the `key:` colon — for object/array openers like `{` */
-  raw?: string;
-  comma?: boolean;
-  indent?: boolean;
+  no: string;
+  tag: string;
+  title: string;
+  sub?: string;
+  last?: boolean;
 }) {
   return (
-    <div className="flex">
-      <span className="mr-3 inline-block w-5 select-none text-paper/30">{String(no).padStart(2, "0")}</span>
-      <span className="flex-1">
-        {indent && <span>  </span>}
-        {k && (
-          <>
-            <span className="text-paper/55">  </span>
-            <span className="text-accent">{k}</span>
-            <span className="text-paper/55">: </span>
-          </>
+    <motion.div
+      variants={{
+        hidden: { opacity: 0, y: 10 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
+      }}
+      className={cn(
+        "relative flex min-h-[190px] flex-col p-5",
+        !last && "border-b border-ink md:border-b-0 md:border-r"
+      )}
+    >
+      <div className="flex items-baseline justify-between">
+        <div className="font-display text-4xl font-semibold leading-none text-accent">{no}</div>
+        <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted">{tag}</span>
+      </div>
+      <div className="mt-auto">
+        <h3 className="font-display text-xl font-semibold uppercase leading-tight tracking-[0.04em]">
+          {title}
+        </h3>
+        {sub && (
+          <p className="mt-2 font-mono text-[10px] uppercase leading-4 tracking-[0.12em] text-muted">
+            {sub}
+          </p>
         )}
-        {v && <span className="text-paper">{v}</span>}
-        {raw && <span className="text-paper">{raw}</span>}
-        {text && !k && <span className="text-paper">{text}</span>}
-        {comma && <span className="text-paper/55">,</span>}
-      </span>
-    </div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -726,56 +798,6 @@ function GlyphDeadEnd() {
       <polyline points="24,18 28,22 24,26" />
       <line x1="32" y1="10" x2="32" y2="34" strokeWidth="1.6" />
       <line x1="35" y1="10" x2="35" y2="34" strokeDasharray="2 2" />
-    </svg>
-  );
-}
-
-function ClosedLoopGlyph() {
-  // self-contained mini loop: 5 dots round a circle with a single accent arc
-  // and a centered ✓ — visually says "the loop closed" without overflowing labels.
-  const size = 96;
-  const cx = size / 2;
-  const cy = size / 2;
-  const r = size / 2 - 8;
-  const stages = [0, 72, 144, 216, 288];
-  const polar = (deg: number) => {
-    const rad = (deg - 90) * (Math.PI / 180);
-    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
-  };
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden className="text-ink">
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="currentColor" strokeWidth="0.8" />
-      <circle cx={cx} cy={cy} r={r - 8} fill="none" stroke="currentColor" strokeWidth="0.4" strokeDasharray="2 3" />
-      {/* accent arc covering the last quarter */}
-      <path
-        d={`M ${polar(216).x} ${polar(216).y} A ${r} ${r} 0 0 1 ${polar(360).x} ${polar(360).y}`}
-        stroke="#FF5B1F"
-        strokeWidth="1.4"
-        fill="none"
-      />
-      {stages.map((deg, i) => {
-        const p = polar(deg);
-        return (
-          <circle
-            key={deg}
-            cx={p.x}
-            cy={p.y}
-            r={i === 4 ? 3 : 2}
-            fill={i === 4 ? "#FF5B1F" : "currentColor"}
-          />
-        );
-      })}
-      <text
-        x={cx}
-        y={cy + 4}
-        textAnchor="middle"
-        fontFamily="var(--font-mono)"
-        fontSize="11"
-        fontWeight="600"
-        fill="#FF5B1F"
-      >
-        ✓
-      </text>
     </svg>
   );
 }

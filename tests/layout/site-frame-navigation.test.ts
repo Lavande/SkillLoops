@@ -7,25 +7,32 @@ function read(rel: string): string {
 }
 
 describe("SiteFrame navigation", () => {
-  it("links the deck in the top menu without exposing the console", () => {
+  it("keeps presentation routes out of the top menu without exposing the console", () => {
     const src = read("components/brutalist/SiteFrame.tsx");
 
     expect(src).toContain('pathname?.startsWith("/deck")');
-    expect(src).toContain('href="/deck"');
-    expect(src).toContain(">Deck</Link>");
+    expect(src).toContain('pathname?.startsWith("/pitch")');
+    expect(src).not.toContain('href="/deck"');
+    expect(src).not.toContain('href="/pitch"');
+    expect(src).not.toContain(">Deck</Link>");
+    expect(src).not.toContain(">Pitch</Link>");
     expect(src).not.toContain('href="/console"');
     expect(src).not.toContain(">Console</Link>");
   });
 
-  it("uses deck as the presentation route name", () => {
+  it("keeps presentation route pages intact", () => {
     expect(fs.existsSync(path.join(process.cwd(), "app/deck/page.tsx"))).toBe(true);
+    expect(fs.existsSync(path.join(process.cwd(), "app/pitch/page.tsx"))).toBe(true);
     expect(fs.existsSync(path.join(process.cwd(), "app/demo/page.tsx"))).toBe(false);
 
-    const src = read("app/deck/page.tsx");
-    expect(src).toContain("export default function DeckPage()");
-    expect(src).not.toContain("export default function DemoDeck()");
-    expect(src).toContain('["DECK", "/deck"]');
-    expect(src).not.toContain('["DECK", "/demo"]');
+    const deckSrc = read("app/deck/page.tsx");
+    expect(deckSrc).toContain("export default function DeckPage()");
+    expect(deckSrc).not.toContain("export default function DemoDeck()");
+    expect(deckSrc).toContain('["DECK", "/deck"]');
+    expect(deckSrc).not.toContain('["DECK", "/demo"]');
+
+    const pitchSrc = read("app/pitch/page.tsx");
+    expect(pitchSrc).toContain("export default function PitchPage()");
   });
 
   it("keeps the global frame usable on narrow screens", () => {

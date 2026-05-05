@@ -41,7 +41,17 @@ Voiceover:
 > But real tools change. APIs move. Models change. Edge cases appear.
 > The best signal is the moment an agent fails, but that signal usually disappears.
 
-### 0:28-0:48 — Website: Publish Skill
+### 0:28-0:38 — Transition Card: Bridge to Demo
+
+Screen: `/pitch`, scene 3 (the loop card).
+
+Voiceover:
+
+> SkillLoops fixes this with one simple loop.
+> The buyer uses a skill, captures a real failure, and earns ownership when the contribution is judged useful.
+> Let's walk through it.
+
+### 0:38-0:58 — Website: Publish Skill
 
 Screen: `/publish`.
 
@@ -182,6 +192,18 @@ Voiceover:
 > use, reflect, submit, judge, own, and improve.
 > It turns AI skill failures into a market signal, an improvement path, and an economic stake.
 
+### 3:00-3:20 — Transition Card: Roadmap
+
+Screen: `/pitch`, scene 6 (roadmap).
+
+Voiceover:
+
+> This is just the first version of the protocol.
+> Next, the single judge becomes a Judge DAO, where members stake to score and get slashed for bad calls — that is how we keep scoring objective.
+> On top of it, we add an arbitration path so any contributor can appeal a disputed score.
+> Then we open a secondary market, so the skill shares users earn can be traded.
+> And the long-term vision is A2A: an agent-to-agent network where agents discover failures and evolve skills on their own.
+
 ## If You Need a 90-Second Version
 
 Use this compressed script:
@@ -221,8 +243,10 @@ Use this compressed script:
 
 ## Suggested Transition Card Order
 
+0. Cold open: `Skill Loops Protocol` (animated logo)
 1. Title: `SkillLoops Protocol`
 2. Problem: `Skills decay after sale`
 3. Loop: `Use -> Reflect -> Submit -> Judge -> Own`
 4. Proof: `Signed actions, permanent records, shared revenue`
 5. Closing: `Failures become ownership`
+6. Roadmap: `What ships next`
