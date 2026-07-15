@@ -75,7 +75,7 @@ describe("applyEvent projections (shape-only, no RPC fetch)", () => {
       minAuthorRatioBps: 4000,
       totalContributorWeight: 176,
       contributorCount: 1,
-      pointsPer100bps: 250,
+      pointsPer100Bps: 250,
       maxPoolIncreasePerEvaluationBps: 500,
       lastSnapshotTime: 110,
     });

@@ -447,7 +447,7 @@ async function hydrateSkillProjection(conn: Connection, db: DB, skillPk: PublicK
         number(ledgerAcct.minAuthorRatioBps),
         number(ledgerAcct.totalContributorWeight),
         number(ledgerAcct.contributorCount),
-        number(ledgerAcct.pointsPer100bps),
+        number(ledgerAcct.pointsPer100Bps),
         number(ledgerAcct.maxPoolIncreasePerEvaluationBps),
         number(ledgerAcct.lastSnapshotTime),
       );
