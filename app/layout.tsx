@@ -1,4 +1,3 @@
-import "@/lib/bootstrap";
 import type { Metadata } from "next";
 import { Archivo_Narrow, IBM_Plex_Mono, Fraunces } from "next/font/google";
 import "./globals.css";
