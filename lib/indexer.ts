@@ -13,6 +13,7 @@ interface IndexerState { running: boolean; lastTick: number }
 interface IndexerRuntime {
   state: IndexerState;
   intervalHandle: ReturnType<typeof setInterval> | null;
+  nextHydrationAttemptAt?: number;
 }
 
 const globalForIndexer = globalThis as typeof globalThis & {
@@ -21,6 +22,7 @@ const globalForIndexer = globalThis as typeof globalThis & {
 const runtime = globalForIndexer.__slpIndexerRuntime ??= {
   state: { running: false, lastTick: 0 },
   intervalHandle: null,
+  nextHydrationAttemptAt: 0,
 };
 const state = runtime.state;
 
@@ -365,6 +367,7 @@ async function enrichAfterCommit(conn: Connection, db: DB, ev: SlpEvent): Promis
 }
 
 async function hydrateMissingSkillProjections(conn: Connection, db: DB): Promise<void> {
+  if ((runtime.nextHydrationAttemptAt ?? 0) > Date.now()) return;
   const rows = db.prepare(`SELECT DISTINCT e.skill_id
     FROM experiences e
     LEFT JOIN skills s ON s.skill_id = e.skill_id
@@ -374,6 +377,8 @@ async function hydrateMissingSkillProjections(conn: Connection, db: DB): Promise
       await hydrateSkillProjection(conn, db, new PublicKey(row.skill_id));
     } catch (e) {
       console.error("[indexer] hydrate missing skill failed", e);
+      runtime.nextHydrationAttemptAt = Date.now() + 60_000;
+      break;
     }
   }
 }
@@ -390,11 +395,9 @@ async function hydrateSkillProjection(conn: Connection, db: DB, skillPk: PublicK
   }, programId);
   const [ledgerPk] = pdas.shareLedger(programId, skillPk);
   const [poolPk] = pdas.revenuePool(programId, skillPk);
-  const [skillAcct, ledgerAcct, poolAcct] = await Promise.all([
-    (program.account as any).skill.fetch(skillPk),
-    (program.account as any).shareLedger.fetch(ledgerPk),
-    (program.account as any).revenuePool.fetch(poolPk),
-  ]);
+  const skillAcct = await (program.account as any).skill.fetch(skillPk);
+  const ledgerAcct = await (program.account as any).shareLedger.fetch(ledgerPk);
+  const poolAcct = await (program.account as any).revenuePool.fetch(poolPk);
   const currentVersion = Number(skillAcct.currentVersion?.toString?.() ?? skillAcct.currentVersion);
   const [versionPk] = pdas.skillVersion(programId, skillPk, currentVersion);
   const versionAcct = await (program.account as any).skillVersion.fetch(versionPk);
