@@ -11,10 +11,14 @@ describe("server bootstrap instrumentation", () => {
     const instrumentation = readSource("instrumentation.ts");
     const nextConfig = readSource("next.config.mjs");
     const layout = readSource("app/layout.tsx");
+    const indexer = readSource("lib/indexer.ts");
+    const judge = readSource("lib/judge-client.ts");
 
     expect(instrumentation).toContain('process.env.NEXT_RUNTIME === "nodejs"');
     expect(instrumentation).toContain('await import("./lib/bootstrap")');
     expect(nextConfig).toContain("instrumentationHook: true");
     expect(layout).not.toContain('import "@/lib/bootstrap"');
+    expect(indexer).toContain("__slpIndexerRuntime");
+    expect(judge).toContain("__slpJudgeRuntime");
   });
 });

@@ -8,16 +8,26 @@ import type { ExperienceBundle } from "./schemas";
 import { getStorageBackend } from "./storage";
 import { PublicKey } from "@solana/web3.js";
 
-let running = false;
-let intervalHandle: ReturnType<typeof setInterval> | null = null;
+interface JudgeRuntime {
+  running: boolean;
+  intervalHandle: ReturnType<typeof setInterval> | null;
+}
 
-export function isJudgeRunning(): boolean { return running; }
+const globalForJudge = globalThis as typeof globalThis & {
+  __slpJudgeRuntime?: JudgeRuntime;
+};
+const runtime = globalForJudge.__slpJudgeRuntime ??= {
+  running: false,
+  intervalHandle: null,
+};
+
+export function isJudgeRunning(): boolean { return runtime.running; }
 
 export function getJudgeRuntimeStatus() {
   try {
     const signer = loadJudgeSigner();
     return {
-      running,
+      running: runtime.running,
       signerConfigured: !!signer,
       signerPublicKey: signer?.publicKey.toBase58() ?? null,
       signerError: null,
@@ -26,7 +36,7 @@ export function getJudgeRuntimeStatus() {
     };
   } catch (e) {
     return {
-      running,
+      running: runtime.running,
       signerConfigured: false,
       signerPublicKey: null,
       signerError: e instanceof Error ? e.message : "judge_signer_invalid",
@@ -37,15 +47,15 @@ export function getJudgeRuntimeStatus() {
 }
 
 export function startJudgeDaemon(): void {
-  if (intervalHandle) return;
-  running = true;
-  intervalHandle = setInterval(() => { evaluateOnce().catch((e) => console.error("[judge]", e)); }, 3000);
+  if (runtime.intervalHandle) return;
+  runtime.running = true;
+  runtime.intervalHandle = setInterval(() => { evaluateOnce().catch((e) => console.error("[judge]", e)); }, 3000);
 }
 
 export function stopJudgeDaemon(): void {
-  if (intervalHandle) clearInterval(intervalHandle);
-  intervalHandle = null;
-  running = false;
+  if (runtime.intervalHandle) clearInterval(runtime.intervalHandle);
+  runtime.intervalHandle = null;
+  runtime.running = false;
 }
 
 export async function evaluateOnce(): Promise<{ processed: number }> {

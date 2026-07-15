@@ -10,21 +10,32 @@ import { now } from "@/lib/mock/clock";
 
 interface IndexerState { running: boolean; lastTick: number }
 
-const state: IndexerState = { running: false, lastTick: 0 };
-let intervalHandle: ReturnType<typeof setInterval> | null = null;
+interface IndexerRuntime {
+  state: IndexerState;
+  intervalHandle: ReturnType<typeof setInterval> | null;
+}
+
+const globalForIndexer = globalThis as typeof globalThis & {
+  __slpIndexerRuntime?: IndexerRuntime;
+};
+const runtime = globalForIndexer.__slpIndexerRuntime ??= {
+  state: { running: false, lastTick: 0 },
+  intervalHandle: null,
+};
+const state = runtime.state;
 
 export function isRunning(): boolean { return state.running; }
 
 export function start(): void {
-  if (intervalHandle) return;
+  if (runtime.intervalHandle) return;
   const interval = Number(process.env.INDEXER_POLL_INTERVAL_MS ?? "2000");
   state.running = true;
-  intervalHandle = setInterval(() => { tick().catch((e) => console.error("[indexer]", e)); }, interval);
+  runtime.intervalHandle = setInterval(() => { tick().catch((e) => console.error("[indexer]", e)); }, interval);
 }
 
 export function stop(): void {
-  if (intervalHandle) clearInterval(intervalHandle);
-  intervalHandle = null;
+  if (runtime.intervalHandle) clearInterval(runtime.intervalHandle);
+  runtime.intervalHandle = null;
   state.running = false;
 }
 
