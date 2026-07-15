@@ -45,6 +45,8 @@ export async function tick(opts: { sig?: string } = {}): Promise<{ processed: nu
   const db = getDb();
   let processed = 0;
 
+  await hydrateMissingSkillProjections(conn, db);
+
   if (opts.sig) {
     if (isAlreadyIndexed(db, opts.sig)) return { processed: 0 };
     const tx = await conn.getTransaction(opts.sig, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
@@ -297,6 +299,11 @@ async function enrichAfterCommit(conn: Connection, db: DB, ev: SlpEvent): Promis
   }
   if (ev.name === "ExperienceSubmitted") {
     const skillPk = ev.data.skill as PublicKey;
+    try {
+      await hydrateSkillProjection(conn, db, skillPk);
+    } catch (e) {
+      console.error("[indexer] hydrate submitted skill failed", e);
+    }
     const experienceId = BigInt(ev.data.experienceId.toString());
     const [experiencePk] = pdas.experience(getChainConfig().programId, skillPk, experienceId);
     try {
@@ -355,4 +362,142 @@ async function enrichAfterCommit(conn: Connection, db: DB, ev: SlpEvent): Promis
       }
     } catch (e) { console.error("[indexer] enrich claims failed", e); }
   }
+}
+
+async function hydrateMissingSkillProjections(conn: Connection, db: DB): Promise<void> {
+  const rows = db.prepare(`SELECT DISTINCT e.skill_id
+    FROM experiences e
+    LEFT JOIN skills s ON s.skill_id = e.skill_id
+    WHERE s.skill_id IS NULL`).all() as { skill_id: string }[];
+  for (const row of rows) {
+    try {
+      await hydrateSkillProjection(conn, db, new PublicKey(row.skill_id));
+    } catch (e) {
+      console.error("[indexer] hydrate missing skill failed", e);
+    }
+  }
+}
+
+async function hydrateSkillProjection(conn: Connection, db: DB, skillPk: PublicKey): Promise<void> {
+  const skillId = skillPk.toBase58();
+  if (db.prepare(`SELECT 1 FROM skills WHERE skill_id = ?`).get(skillId)) return;
+
+  const { getProgram } = await import("./chain/program");
+  const { programId } = getChainConfig();
+  const program = getProgram(conn, {
+    publicKey: new PublicKey("11111111111111111111111111111112"),
+    signTransaction: async (t: any) => t,
+  }, programId);
+  const [ledgerPk] = pdas.shareLedger(programId, skillPk);
+  const [poolPk] = pdas.revenuePool(programId, skillPk);
+  const [skillAcct, ledgerAcct, poolAcct] = await Promise.all([
+    (program.account as any).skill.fetch(skillPk),
+    (program.account as any).shareLedger.fetch(ledgerPk),
+    (program.account as any).revenuePool.fetch(poolPk),
+  ]);
+  const currentVersion = Number(skillAcct.currentVersion?.toString?.() ?? skillAcct.currentVersion);
+  const [versionPk] = pdas.skillVersion(programId, skillPk, currentVersion);
+  const versionAcct = await (program.account as any).skillVersion.fetch(versionPk);
+
+  const holders = new Set<string>([
+    skillAcct.author.toBase58(),
+    ...(db.prepare(`SELECT DISTINCT contributor FROM experiences WHERE skill_id = ?`).all(skillId) as { contributor: string }[])
+      .map((row) => row.contributor),
+  ]);
+  const shareAccounts: any[] = [];
+  for (const holder of holders) {
+    const holderPk = new PublicKey(holder);
+    const [sharePk] = pdas.shareAccount(programId, skillPk, holderPk);
+    try {
+      shareAccounts.push(await (program.account as any).shareAccount.fetch(sharePk));
+    } catch {
+      // A pending contributor may not have a share account yet.
+    }
+  }
+
+  const number = (value: any) => Number(value?.toString?.() ?? value);
+  db.transaction(() => {
+    db.prepare(`INSERT INTO skills
+      (skill_id, author, name, description, category, current_version, content_hash, arweave_tx_id,
+       subscription_price, min_author_ratio_bps, created_at, updated_at, subscriber_count, total_revenue)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+        skillId,
+        skillAcct.author.toBase58(),
+        skillAcct.name,
+        skillAcct.description,
+        skillAcct.category,
+        currentVersion,
+        Buffer.from(skillAcct.contentHash).toString("hex"),
+        skillAcct.arweaveTxId,
+        number(skillAcct.subscriptionPrice),
+        number(skillAcct.minAuthorRatioBps),
+        number(skillAcct.createdAt),
+        number(skillAcct.updatedAt),
+        number(skillAcct.subscriberCount),
+        number(skillAcct.totalRevenue),
+      );
+    db.prepare(`INSERT INTO share_ledgers
+      (skill_id, author_ownership_bps, contributor_pool_bps, min_author_ratio_bps,
+       total_contributor_weight, contributor_count, points_per_100bps,
+       max_pool_increase_per_evaluation_bps, last_snapshot_time)
+      VALUES (?,?,?,?,?,?,?,?,?)`).run(
+        skillId,
+        number(ledgerAcct.authorOwnershipBps),
+        number(ledgerAcct.contributorPoolBps),
+        number(ledgerAcct.minAuthorRatioBps),
+        number(ledgerAcct.totalContributorWeight),
+        number(ledgerAcct.contributorCount),
+        number(ledgerAcct.pointsPer100bps),
+        number(ledgerAcct.maxPoolIncreasePerEvaluationBps),
+        number(ledgerAcct.lastSnapshotTime),
+      );
+    db.prepare(`INSERT INTO revenue_pools
+      (skill_id, current_period_revenue, total_lifetime_revenue, current_period_start, period_length,
+       snapshot_author_ownership_bps, snapshot_contributor_pool_bps, last_settlement_time)
+      VALUES (?,?,?,?,?,?,?,?)`).run(
+        skillId,
+        number(poolAcct.currentPeriodRevenue),
+        number(poolAcct.totalLifetimeRevenue),
+        number(poolAcct.currentPeriodStart),
+        number(poolAcct.periodLength),
+        number(poolAcct.snapshotAuthorOwnershipBps),
+        number(poolAcct.snapshotContributorPoolBps),
+        number(poolAcct.lastSettlementTime),
+      );
+    db.prepare(`INSERT INTO skill_versions
+      (skill_id, version, content_hash, arweave_tx_id, contributing_experience_ids, published_at)
+      VALUES (?,?,?,?,?,?)`).run(
+        skillId,
+        currentVersion,
+        Buffer.from(versionAcct.contentHash).toString("hex"),
+        versionAcct.arweaveTxId,
+        JSON.stringify(versionAcct.contributingExperienceIds.map(number)),
+        number(versionAcct.publishedAt),
+      );
+    for (const account of shareAccounts) {
+      db.prepare(`INSERT INTO share_accounts
+        (holder, skill_id, contribution_weight, lock_until, first_contribution_at, last_contribution_at)
+        VALUES (?,?,?,?,?,?)
+        ON CONFLICT(holder, skill_id) DO UPDATE SET
+          contribution_weight = excluded.contribution_weight,
+          lock_until = excluded.lock_until,
+          first_contribution_at = excluded.first_contribution_at,
+          last_contribution_at = excluded.last_contribution_at`).run(
+            account.holder.toBase58(),
+            skillId,
+            number(account.contributionWeight),
+            number(account.lockUntil),
+            number(account.firstContributionAt) || null,
+            number(account.lastContributionAt) || null,
+          );
+    }
+  })();
+}
+
+export async function hydrateSkillProjectionForTest(
+  conn: Connection,
+  db: DB,
+  skillPk: PublicKey,
+): Promise<void> {
+  await hydrateSkillProjection(conn, db, skillPk);
 }

@@ -1,11 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { PublicKey } from "@solana/web3.js";
 import { _resetSingletonForTesting, getDb } from "@/lib/db";
-import { applyEventForTest, enrichAfterCommitForTest } from "@/lib/indexer";
+import { applyEventForTest, enrichAfterCommitForTest, hydrateSkillProjectionForTest } from "@/lib/indexer";
 
 const programMock = vi.hoisted(() => ({
   experienceFetch: vi.fn(),
   skillFetch: vi.fn(),
+  ledgerFetch: vi.fn(),
+  poolFetch: vi.fn(),
+  versionFetch: vi.fn(),
+  shareFetch: vi.fn(),
 }));
 
 vi.mock("@/lib/chain/program", () => ({
@@ -13,6 +17,10 @@ vi.mock("@/lib/chain/program", () => ({
     account: {
       skill: { fetch: programMock.skillFetch },
       experienceRecord: { fetch: programMock.experienceFetch },
+      shareLedger: { fetch: programMock.ledgerFetch },
+      revenuePool: { fetch: programMock.poolFetch },
+      skillVersion: { fetch: programMock.versionFetch },
+      shareAccount: { fetch: programMock.shareFetch },
       claimableRevenue: { all: vi.fn().mockResolvedValue([]) },
     },
   }),
@@ -24,9 +32,14 @@ const AUTHOR = new PublicKey("11111111111111111111111111111115");
 const BOB = new PublicKey("11111111111111111111111111111116");
 
 beforeEach(() => {
+  process.env.NEXT_PUBLIC_SLP_PROGRAM_ID = "BvgbBSJtRR8o6t6BpHVCGXymqgCwYSSWqneETJDdRU9t";
   _resetSingletonForTesting();
   programMock.experienceFetch.mockReset();
   programMock.skillFetch.mockReset();
+  programMock.ledgerFetch.mockReset();
+  programMock.poolFetch.mockReset();
+  programMock.versionFetch.mockReset();
+  programMock.shareFetch.mockReset();
 });
 
 function insertOwnershipLedger(db: ReturnType<typeof getDb>) {
@@ -36,6 +49,70 @@ function insertOwnershipLedger(db: ReturnType<typeof getDb>) {
 }
 
 describe("applyEvent projections (shape-only, no RPC fetch)", () => {
+  it("hydrates a missing skill projection from on-chain accounts", async () => {
+    const db = getDb(":memory:");
+    db.prepare(`INSERT INTO experiences
+      (experience_id, skill_id, contributor, skill_version, content_hash, arweave_tx_id, bundle_json, status, submitted_at)
+      VALUES (2, ?, ?, 1, 'hash', 'irys_bundle', '{}', 'Evaluated', 100)`).run(SKILL.toBase58(), BOB.toBase58());
+    programMock.skillFetch.mockResolvedValue({
+      author: AUTHOR,
+      name: "Access Reviewer",
+      description: "Checks authorization boundaries.",
+      category: "security",
+      currentVersion: 1,
+      contentHash: new Uint8Array(32).fill(1),
+      arweaveTxId: "irys_skill",
+      subscriptionPrice: 100_000_000,
+      minAuthorRatioBps: 4000,
+      createdAt: 90,
+      updatedAt: 95,
+      subscriberCount: 1,
+      totalRevenue: 100_000_000,
+    });
+    programMock.ledgerFetch.mockResolvedValue({
+      authorOwnershipBps: 9977,
+      contributorPoolBps: 23,
+      minAuthorRatioBps: 4000,
+      totalContributorWeight: 176,
+      contributorCount: 1,
+      pointsPer100bps: 250,
+      maxPoolIncreasePerEvaluationBps: 500,
+      lastSnapshotTime: 110,
+    });
+    programMock.poolFetch.mockResolvedValue({
+      currentPeriodRevenue: 100_000_000,
+      totalLifetimeRevenue: 0,
+      currentPeriodStart: 90,
+      periodLength: 300,
+      snapshotAuthorOwnershipBps: 10000,
+      snapshotContributorPoolBps: 0,
+      lastSettlementTime: 0,
+    });
+    programMock.versionFetch.mockResolvedValue({
+      contentHash: new Uint8Array(32).fill(2),
+      arweaveTxId: "irys_version",
+      contributingExperienceIds: [2],
+      publishedAt: 90,
+    });
+    programMock.shareFetch.mockImplementation(async (pk: PublicKey) => ({
+      holder: programMock.shareFetch.mock.calls.length === 1 ? AUTHOR : BOB,
+      contributionWeight: programMock.shareFetch.mock.calls.length === 1 ? 0 : 176,
+      lockUntil: 999,
+      firstContributionAt: 100,
+      lastContributionAt: 110,
+      pk,
+    }));
+
+    await hydrateSkillProjectionForTest({} as any, db, SKILL);
+
+    expect(db.prepare(`SELECT name, category FROM skills WHERE skill_id = ?`).get(SKILL.toBase58()))
+      .toMatchObject({ name: "Access Reviewer", category: "security" });
+    expect(db.prepare(`SELECT author_ownership_bps, contributor_pool_bps, total_contributor_weight FROM share_ledgers WHERE skill_id = ?`).get(SKILL.toBase58()))
+      .toMatchObject({ author_ownership_bps: 9977, contributor_pool_bps: 23, total_contributor_weight: 176 });
+    expect(db.prepare(`SELECT contribution_weight FROM share_accounts WHERE holder = ? AND skill_id = ?`).get(BOB.toBase58(), SKILL.toBase58()))
+      .toMatchObject({ contribution_weight: 176 });
+  });
+
   it("SkillPublished creates placeholder skill, ownership ledger, author account, pool, and v1", async () => {
     const db = getDb(":memory:");
     await applyEventForTest(db, {
@@ -158,6 +235,11 @@ describe("applyEvent projections (shape-only, no RPC fetch)", () => {
       data: { skill: SKILL, experienceId: 0, contributor: BOB },
     };
     await applyEventForTest(db, ev, "sig4b", 4, true);
+    db.prepare(`INSERT INTO skills
+      (skill_id, author, name, description, category, current_version, content_hash, arweave_tx_id,
+       subscription_price, min_author_ratio_bps, created_at, updated_at)
+      VALUES (?, ?, 'Existing', '', 'test', 1, '', '', 0, 0, 100, 100)`)
+      .run(SKILL.toBase58(), AUTHOR.toBase58());
     programMock.experienceFetch.mockResolvedValueOnce({
       skillVersion: 2,
       contentHash: Uint8Array.from({ length: 32 }, (_v, i) => i),
