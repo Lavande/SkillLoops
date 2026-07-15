@@ -14,6 +14,7 @@ interface IndexerRuntime {
   state: IndexerState;
   intervalHandle: ReturnType<typeof setInterval> | null;
   nextHydrationAttemptAt?: number;
+  hydrationInFlight?: boolean;
 }
 
 const globalForIndexer = globalThis as typeof globalThis & {
@@ -23,6 +24,7 @@ const runtime = globalForIndexer.__slpIndexerRuntime ??= {
   state: { running: false, lastTick: 0 },
   intervalHandle: null,
   nextHydrationAttemptAt: 0,
+  hydrationInFlight: false,
 };
 const state = runtime.state;
 
@@ -367,19 +369,24 @@ async function enrichAfterCommit(conn: Connection, db: DB, ev: SlpEvent): Promis
 }
 
 async function hydrateMissingSkillProjections(conn: Connection, db: DB): Promise<void> {
-  if ((runtime.nextHydrationAttemptAt ?? 0) > Date.now()) return;
-  const rows = db.prepare(`SELECT DISTINCT e.skill_id
-    FROM experiences e
-    LEFT JOIN skills s ON s.skill_id = e.skill_id
-    WHERE s.skill_id IS NULL`).all() as { skill_id: string }[];
-  for (const row of rows) {
-    try {
-      await hydrateSkillProjection(conn, db, new PublicKey(row.skill_id));
-    } catch (e) {
-      console.error("[indexer] hydrate missing skill failed", e);
-      runtime.nextHydrationAttemptAt = Date.now() + 60_000;
-      break;
+  if (runtime.hydrationInFlight || (runtime.nextHydrationAttemptAt ?? 0) > Date.now()) return;
+  runtime.hydrationInFlight = true;
+  try {
+    const rows = db.prepare(`SELECT DISTINCT e.skill_id
+      FROM experiences e
+      LEFT JOIN skills s ON s.skill_id = e.skill_id
+      WHERE s.skill_id IS NULL`).all() as { skill_id: string }[];
+    for (const row of rows) {
+      try {
+        await hydrateSkillProjection(conn, db, new PublicKey(row.skill_id));
+      } catch (e) {
+        console.error("[indexer] hydrate missing skill failed", e);
+        runtime.nextHydrationAttemptAt = Date.now() + 60_000;
+        break;
+      }
     }
+  } finally {
+    runtime.hydrationInFlight = false;
   }
 }
 
