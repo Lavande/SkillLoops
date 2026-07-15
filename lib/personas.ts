@@ -57,3 +57,30 @@ export function loadPersonaSigners(): Record<PersonaName, PersonaSigner> | null 
     judge: makePersonaSigner("judge", Keypair.fromSecretKey(Uint8Array.from(vault.judge))),
   };
 }
+
+export function loadJudgeSigner(
+  env: Record<string, string | undefined> = process.env,
+): PersonaSigner | null {
+  const encoded = env.JUDGE_PRIVATE_KEY_BASE64?.trim();
+  if (encoded) {
+    const secretKey = Buffer.from(encoded, "base64");
+    if (secretKey.length !== 64) {
+      throw new Error("judge_private_key_base64_invalid");
+    }
+    try {
+      return makePersonaSigner(
+        "judge",
+        Keypair.fromSecretKey(new Uint8Array(secretKey)),
+      );
+    } catch {
+      throw new Error("judge_private_key_base64_invalid");
+    }
+  }
+
+  const vault = loadPersonaVault();
+  if (!vault) return null;
+  return makePersonaSigner(
+    "judge",
+    Keypair.fromSecretKey(Uint8Array.from(vault.judge)),
+  );
+}

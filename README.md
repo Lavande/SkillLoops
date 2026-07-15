@@ -111,9 +111,14 @@ IRYS_NETWORK=devnet
 
 JUDGE_BACKEND=anthropic
 JUDGE_DAEMON_AUTOSTART=true
+JUDGE_PRIVATE_KEY_BASE64=<base64-encoded-64-byte-solana-secret>
 ANTHROPIC_API_KEY=<key>
 ANTHROPIC_MODEL=claude-sonnet-4-5-20250929
 ```
+
+`JUDGE_PRIVATE_KEY_BASE64` is server-only. Store it in the deployment platform's
+secret manager; never expose it through a `NEXT_PUBLIC_` variable. Local demos
+without this variable continue to use the judge entry in `DEMO_PERSONAS_PATH`.
 
 *Lit decrypt remains mocked in this slice.*
 

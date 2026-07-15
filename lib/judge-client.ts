@@ -3,7 +3,7 @@ import { getConnection } from "./chain/connection";
 import { getChainConfig } from "./chain/config";
 import { evaluateExperience } from "./chain/tx";
 import { getJudgeScorer, JUDGE_ID } from "./judge/scorer";
-import { loadPersonaSigners } from "./personas";
+import { loadJudgeSigner } from "./personas";
 import type { ExperienceBundle } from "./schemas";
 import { getStorageBackend } from "./storage";
 import { PublicKey } from "@solana/web3.js";
@@ -12,6 +12,29 @@ let running = false;
 let intervalHandle: ReturnType<typeof setInterval> | null = null;
 
 export function isJudgeRunning(): boolean { return running; }
+
+export function getJudgeRuntimeStatus() {
+  try {
+    const signer = loadJudgeSigner();
+    return {
+      running,
+      signerConfigured: !!signer,
+      signerPublicKey: signer?.publicKey.toBase58() ?? null,
+      signerError: null,
+      scorer: getJudgeScorer().name,
+      storage: getStorageBackend().name,
+    };
+  } catch (e) {
+    return {
+      running,
+      signerConfigured: false,
+      signerPublicKey: null,
+      signerError: e instanceof Error ? e.message : "judge_signer_invalid",
+      scorer: getJudgeScorer().name,
+      storage: getStorageBackend().name,
+    };
+  }
+}
 
 export function startJudgeDaemon(): void {
   if (intervalHandle) return;
@@ -27,8 +50,8 @@ export function stopJudgeDaemon(): void {
 
 export async function evaluateOnce(): Promise<{ processed: number }> {
   const db = getDb();
-  const signers = loadPersonaSigners();
-  if (!signers) return { processed: 0 };
+  const judgeSigner = loadJudgeSigner();
+  if (!judgeSigner) throw new Error("judge_signer_not_configured");
   const conn = getConnection();
   const { programId } = getChainConfig();
   const storage = getStorageBackend();
@@ -67,7 +90,7 @@ export async function evaluateOnce(): Promise<{ processed: number }> {
       JUDGE_ID);
 
     try {
-      await evaluateExperience(conn, signers.judge, {
+      await evaluateExperience(conn, judgeSigner, {
         programId,
         skill: new PublicKey(row.skill_id),
         experienceId: BigInt(row.experience_id),
