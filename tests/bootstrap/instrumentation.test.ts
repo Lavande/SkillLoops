@@ -19,6 +19,7 @@ describe("server bootstrap instrumentation", () => {
     expect(nextConfig).toContain("instrumentationHook: true");
     expect(layout).not.toContain('import "@/lib/bootstrap"');
     expect(indexer).toContain("__slpIndexerRuntime");
+    expect(indexer).toContain("runtime.tickInFlight");
     expect(judge).toContain("__slpJudgeRuntime");
   });
 });

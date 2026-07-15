@@ -15,6 +15,7 @@ interface IndexerRuntime {
   intervalHandle: ReturnType<typeof setInterval> | null;
   nextHydrationAttemptAt?: number;
   hydrationInFlight?: boolean;
+  tickInFlight?: boolean;
 }
 
 const globalForIndexer = globalThis as typeof globalThis & {
@@ -25,6 +26,7 @@ const runtime = globalForIndexer.__slpIndexerRuntime ??= {
   intervalHandle: null,
   nextHydrationAttemptAt: 0,
   hydrationInFlight: false,
+  tickInFlight: false,
 };
 const state = runtime.state;
 
@@ -32,9 +34,15 @@ export function isRunning(): boolean { return state.running; }
 
 export function start(): void {
   if (runtime.intervalHandle) return;
-  const interval = Number(process.env.INDEXER_POLL_INTERVAL_MS ?? "2000");
+  const interval = Number(process.env.INDEXER_POLL_INTERVAL_MS ?? "5000");
   state.running = true;
-  runtime.intervalHandle = setInterval(() => { tick().catch((e) => console.error("[indexer]", e)); }, interval);
+  runtime.intervalHandle = setInterval(() => {
+    if (runtime.tickInFlight) return;
+    runtime.tickInFlight = true;
+    tick()
+      .catch((e) => console.error("[indexer]", e))
+      .finally(() => { runtime.tickInFlight = false; });
+  }, interval);
 }
 
 export function stop(): void {
